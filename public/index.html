@@ -580,6 +580,8 @@
     
     <script>
         const socket = io(window.location.origin, {
+            transports: ["websocket"],
+            upgrade: false,
             reconnection: true,
             reconnectionAttempts: Infinity,
             reconnectionDelay: 1000,
