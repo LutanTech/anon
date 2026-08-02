@@ -18,6 +18,16 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db.init_app(app)
 
+LOG_FILE = "server.log"
+
+
+def log(message, data=None):
+    line = f"[SERVER] {message}"
+    if data:
+        line += f" {json.dumps(data)}"
+    logging.info(line)
+    print(line)
+
 socketio = SocketIO(
     app,
     cors_allowed_origins="*",
@@ -26,10 +36,11 @@ socketio = SocketIO(
     ping_timeout=20000
 )
 
+log(f"Async mode: {socketio.server.eio.async_mode}")
+
 with app.app_context():
     db.create_all()
 
-LOG_FILE = "server.log"
 
 logging.basicConfig(
     filename=LOG_FILE,
@@ -37,12 +48,7 @@ logging.basicConfig(
     format="[%(asctime)s] %(message)s"
 )
 
-def log(message, data=None):
-    line = f"[SERVER] {message}"
-    if data:
-        line += f" {json.dumps(data)}"
-    logging.info(line)
-    print(line)
+
 
 log("SERVER LOADED")
 
