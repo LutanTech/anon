@@ -1,1 +1,3 @@
-from app import app as application
+from app import socketio
+
+application = socketio.WSGIApp
