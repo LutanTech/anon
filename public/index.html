@@ -580,15 +580,13 @@
     
     <script>
         const socket = io(window.location.origin, {
-            transports: ["websocket"],
-            upgrade: false,
             reconnection: true,
             reconnectionAttempts: Infinity,
             reconnectionDelay: 1000,
             reconnectionDelayMax: 5000,
             timeout: 20000
         });
-        
+
         let myUserId = null;
         const chatCache = {};
         let myUsername = "";

@@ -30,6 +30,7 @@ def log(message, data=None):
 
 socketio = SocketIO(
     app,
+    async_mode="threading",
     cors_allowed_origins="*",
     max_http_buffer_size=10000000,
     ping_interval=10000,
