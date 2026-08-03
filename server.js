@@ -12,130 +12,165 @@ const PORT = process.env.PORT || 9000;
 const SECRET_KEY = process.env.SECRET_KEY || 'anonchat_secret_key_2026';
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
-// Middlewares
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(express.static(PUBLIC_DIR));
 
-const io = new Server(server, {
-  cors: {
-    origin: '*',
-    methods: ['GET', 'POST']
-  },
-  maxHttpBufferSize: 10000000, // 10 MB
-  pingInterval: 10000,
-  pingTimeout: 20000
-});
+const LOG_FILE = path.join(__dirname, 'server.log');
+const logStream = fs.createWriteStream(LOG_FILE, { flags: 'a' });
 
-const DB_FILE = path.join(__dirname, 'chat.db');
-const db = new sqlite3.Database(DB_FILE, (err) => {
-  if (err) {
-    console.error('[SERVER] Database connection error:', err.message);
-  } else {
-    console.log('[SERVER] Connected to SQLite database:', DB_FILE);
+function log(message, data = null) {
+  const timestamp = new Date().toISOString();
+  let line = `[${timestamp}] [SERVER] ${message}`;
+  if (data !== null && data !== undefined) {
+    try {
+      line += ` ${JSON.stringify(data)}`;
+    } catch (e) {
+      line += ` ${data}`;
+    }
   }
-});
-
-const dbRun = (sql, params = []) => new Promise((resolve, reject) => {
-  db.run(sql, params, function (err) {
-    if (err) reject(err);
-    else resolve(this);
-  });
-});
-
-const dbGet = (sql, params = []) => new Promise((resolve, reject) => {
-  db.get(sql, params, (err, row) => {
-    if (err) reject(err);
-    else resolve(row);
-  });
-});
-
-const dbAll = (sql, params = []) => new Promise((resolve, reject) => {
-  db.all(sql, params, (err, rows) => {
-    if (err) reject(err);
-    else resolve(rows);
-  });
-});
-
-async function initDatabase() {
-  await dbRun(`
-    CREATE TABLE IF NOT EXISTS users (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      expires_at INTEGER,
-      last_active INTEGER,
-      fcm_token TEXT
-    )
-  `);
-
-  await dbRun(`
-    CREATE TABLE IF NOT EXISTS messages (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      chat_key TEXT NOT NULL,
-      user_id TEXT NOT NULL,
-      target_user_id TEXT NOT NULL,
-      name TEXT NOT NULL,
-      text TEXT,
-      image TEXT,
-      reply_to TEXT,
-      time INTEGER NOT NULL,
-      read_by TEXT,
-      reactions TEXT,
-      edited INTEGER DEFAULT 0,
-      forwarded INTEGER DEFAULT 0
-    )
-  `);
-
-  await dbRun(`CREATE INDEX IF NOT EXISTS idx_chat_key ON messages(chat_key)`);
-
-  await dbRun(`
-    CREATE TABLE IF NOT EXISTS pinned_messages (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      chat_key TEXT UNIQUE NOT NULL,
-      message_id INTEGER NOT NULL,
-      FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE
-    )
-  `);
-
-  console.log('[SERVER] Database schema verified/initialized.');
+  logStream.write(line + '\n');
 }
 
-initDatabase().catch((err) => console.error('[SERVER] DB Init Error:', err));
+// Redirect console output exclusively to server.log
+console.log = (...args) => {
+  const timestamp = new Date().toISOString();
+  const msg = args.map(a => (typeof a === 'object' ? JSON.stringify(a) : a)).join(' ');
+  logStream.write(`[${timestamp}] ${msg}\n`);
+};
 
+console.error = (...args) => {
+  const timestamp = new Date().toISOString();
+  const msg = args.map(a => (typeof a === 'object' ? JSON.stringify(a) : a)).join(' ');
+  logStream.write(`[${timestamp}] [ERROR] ${msg}\n`);
+};
+
+log('====================================================');
+log('SERVER STARTUP INITIATED');
+log('====================================================');
+
+const DB_PATH = path.join(__dirname, 'chat.db');
+const db = new sqlite3.Database(DB_PATH, (err) => {
+  if (err) {
+    log('Database connection error', { error: err.message });
+  } else {
+    log('Connected to SQLite database at ' + DB_PATH);
+  }
+});
+
+function dbRun(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.run(sql, params, function (err) {
+      if (err) reject(err);
+      else resolve(this);
+    });
+  });
+}
+
+function dbGet(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.get(sql, params, (err, row) => {
+      if (err) reject(err);
+      else resolve(row);
+    });
+  });
+}
+
+function dbAll(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.all(sql, params, (err, rows) => {
+      if (err) reject(err);
+      else resolve(rows || []);
+    });
+  });
+}
+
+// Ensure database tables exist
+(async () => {
+  try {
+    await dbRun(`
+      CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        expires_at INTEGER,
+        last_active INTEGER,
+        fcm_token TEXT
+      )
+    `);
+
+    await dbRun(`
+      CREATE TABLE IF NOT EXISTS messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        chat_key TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        target_user_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        text TEXT,
+        image TEXT,
+        reply_to TEXT,
+        time INTEGER NOT NULL,
+        read_by TEXT,
+        reactions TEXT,
+        edited INTEGER DEFAULT 0,
+        forwarded INTEGER DEFAULT 0
+      )
+    `);
+
+    await dbRun(`
+      CREATE TABLE IF NOT EXISTS pinned_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        chat_key TEXT UNIQUE NOT NULL,
+        message_id INTEGER NOT NULL
+      )
+    `);
+    log('Database schema verified successfully');
+  } catch (e) {
+    log('Failed to initialize database schema', { error: e.message });
+  }
+})();
+
+let firebaseAdmin = null;
 let messagingAdmin = null;
 
-try {
-  const firebaseAdmin = require('firebase-admin');
-  const firebaseFile = path.join(PUBLIC_DIR, 'firebase-admin.json');
+const firebaseFile = path.join(PUBLIC_DIR, 'firebase-admin.json');
+log('[FCM DEBUG] Looking for Firebase service account file at:', firebaseFile);
 
-  if (fs.existsSync(firebaseFile)) {
+if (fs.existsSync(firebaseFile)) {
+  try {
+    const admin = require('firebase-admin');
     const serviceAccount = require(firebaseFile);
-    firebaseAdmin.initializeApp({
-      credential: firebaseAdmin.credential.cert(serviceAccount)
+    
+    firebaseAdmin = admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount)
     });
     messagingAdmin = firebaseAdmin.messaging();
-    console.log('[SERVER] Firebase Admin SDK initialized');
-  } else {
-    console.log('[SERVER] Firebase Admin SDK disabled (file not found)');
+    log('[FCM SUCCESS] Firebase Admin SDK successfully initialized', {
+      projectId: serviceAccount.project_id,
+      clientEmail: serviceAccount.client_email
+    });
+  } catch (e) {
+    log('[FCM ERROR] Firebase Admin SDK initialization failed', {
+      error: e.message,
+      stack: e.stack
+    });
   }
-} catch (e) {
-  console.log('[SERVER] Firebase error:', e.message);
+} else {
+  log('[FCM WARN] firebase-admin.json missing in public directory. Push notifications will be disabled.');
 }
 
 const ANIMALS = [
-  "Lion", "Tiger", "Wolf", "Fox", "Falcon", "Panda", "Bear", "Eagle",
-  "Hawk", "Jaguar", "Leopard", "Otter", "Rabbit", "Koala", "Raven",
-  "Shark", "Whale", "Dolphin", "Cobra", "Python", "Moose", "Buffalo"
+  'Lion', 'Tiger', 'Wolf', 'Fox', 'Falcon', 'Panda', 'Bear', 'Eagle',
+  'Hawk', 'Jaguar', 'Leopard', 'Otter', 'Rabbit', 'Koala', 'Raven',
+  'Shark', 'Whale', 'Dolphin', 'Cobra', 'Python', 'Moose', 'Buffalo'
 ];
 
-const sidToUserId = new Map();
 let onlineUsers = [];
+const sidToUserId = new Map();
 const pendingDisconnects = new Map();
 const DISCONNECT_GRACE_SEC = 25;
 
 function randomName() {
-  const animal = ANIMALS[Math.floor(Math.random() * ANIMALS.length)];
-  const num = Math.floor(1000 + Math.random() * 9000);
-  return `${animal}-${num}`;
+  return `${ANIMALS[Math.floor(Math.random() * ANIMALS.length)]}-${Math.floor(1000 + Math.random() * 9000)}`;
 }
 
 function getChatKey(id1, id2) {
@@ -148,7 +183,8 @@ function formatUser(row) {
     id: row.id,
     name: row.name,
     expiresAt: row.expires_at,
-    lastActive: row.last_active
+    lastActive: row.last_active,
+    hasFcmToken: Boolean(row.fcm_token)
   };
 }
 
@@ -179,6 +215,83 @@ function formatMessage(row) {
   };
 }
 
+async function sendPushNotification(token, title, body, data = {}, targetUserId = null) {
+  log('[FCM DEBUG] Send push notification requested', {
+    targetUserId,
+    tokenPreview: token ? `${token.substring(0, 15)}...${token.slice(-5)}` : 'NULL',
+    tokenLength: token ? token.length : 0,
+    title,
+    body,
+    customData: data
+  });
+
+  if (!messagingAdmin) {
+    log('[FCM WARN] Aborting push notification: Firebase Admin Messaging is not initialized');
+    return false;
+  }
+
+  if (!token || typeof token !== 'string' || token.trim() === '') {
+    log('[FCM WARN] Aborting push notification: Invalid or empty FCM token provided', { targetUserId });
+    return false;
+  }
+
+  try {
+    const payload = {};
+    for (const [k, v] of Object.entries(data)) {
+      payload[String(k)] = String(v);
+    }
+    payload.title = String(title || 'New Message');
+    payload.body = String(body || '');
+
+    const message = {
+      token: token.trim(),
+      data: payload,
+      notification: {
+        title: String(title || 'New Message'),
+        body: String(body || '')
+      },
+      android: {
+        priority: 'high',
+        notification: {
+          sound: 'default',
+          channelId: 'messages',
+          priority: 'high'
+        }
+      }
+    };
+
+    log('[FCM DEBUG] Sending payload to Firebase API...', { messageStructure: message });
+
+    const response = await messagingAdmin.send(message);
+    log('[FCM SUCCESS] Push notification sent successfully!', {
+      messageId: response,
+      targetUserId,
+      timestamp: new Date().toISOString()
+    });
+    return true;
+  } catch (e) {
+    log('[FCM ERROR] Failed to send push notification', {
+      targetUserId,
+      errorCode: e.code || 'UNKNOWN_ERROR',
+      errorMessage: e.message,
+      errorDetails: e.errorInfo || null,
+      stack: e.stack
+    });
+
+    // Handle invalid registration tokens by clearing them from DB
+    if (
+      e.code === 'messaging/invalid-registration-token' ||
+      e.code === 'messaging/registration-token-not-registered'
+    ) {
+      log('[FCM WARN] Removing stale/invalid FCM token from DB for user:', targetUserId);
+      if (targetUserId) {
+        await dbRun('UPDATE users SET fcm_token = NULL WHERE id = ?', [targetUserId]).catch(() => {});
+      }
+    }
+    return false;
+  }
+}
+
 async function broadcastUsers() {
   const rows = await dbAll('SELECT * FROM users');
   const allUsers = rows.map(formatUser);
@@ -200,9 +313,9 @@ async function calculateLastMessages(currentUserId) {
       [chatKey]
     );
 
-    let text = "Click to Message";
+    let text = 'Click to Message';
     if (last) {
-      text = last.text || (last.image ? "[Attachment]" : "Click to Message");
+      text = last.text || (last.image ? '[Attachment]' : 'Click to Message');
     }
 
     lastMsgs.push({
@@ -214,26 +327,15 @@ async function calculateLastMessages(currentUserId) {
   return lastMsgs;
 }
 
-async function sendPushNotification(token, title, body, data = {}) {
-  if (!messagingAdmin || !token) return;
-
-  try {
-    const payload = {};
-    for (const [k, v] of Object.entries(data)) {
-      payload[String(k)] = String(v);
-    }
-    payload.title = String(title);
-    payload.body = String(body);
-
-    await messagingAdmin.send({
-      token,
-      data: payload,
-      android: { priority: 'high' }
-    });
-  } catch (e) {
-    console.error('[SERVER] Push failed:', e.message);
-  }
-}
+const io = new Server(server, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST']
+  },
+  maxHttpBufferSize: 1e7, // 10MB
+  pingInterval: 10000,
+  pingTimeout: 20000
+});
 
 app.get('/', (req, res) => {
   const indexPath = path.join(PUBLIC_DIR, 'index.html');
@@ -246,10 +348,13 @@ app.get('/', (req, res) => {
 app.get('/health', async (req, res) => {
   try {
     const userCount = await dbGet('SELECT COUNT(*) as count FROM users');
+    const fcmCount = await dbGet('SELECT COUNT(*) as count FROM users WHERE fcm_token IS NOT NULL');
     res.json({
       status: 'healthy',
       online_users: onlineUsers.length,
       total_users: userCount ? userCount.count : 0,
+      users_with_fcm_tokens: fcmCount ? fcmCount.count : 0,
+      fcm_sdk_initialized: Boolean(messagingAdmin),
       timestamp: Date.now()
     });
   } catch (err) {
@@ -257,23 +362,53 @@ app.get('/health', async (req, res) => {
   }
 });
 
+// FCM Token Registration Endpoint with Debug Logging
 app.post('/api/register-fcm', async (req, res) => {
   const { token, userId } = req.body || {};
 
+  log('[FCM REGISTER API] Received FCM token registration request', {
+    userId,
+    tokenPreview: token ? `${token.substring(0, 15)}...${token.slice(-5)}` : 'NULL',
+    tokenLength: token ? token.length : 0,
+    headers: req.headers
+  });
+
   if (!token || !userId) {
-    return res.status(400).json({ success: false });
+    log('[FCM REGISTER API ERROR] Missing required fields', { tokenReceived: Boolean(token), userIdReceived: Boolean(userId) });
+    return res.status(400).json({ success: false, message: 'token and userId are required' });
   }
 
   try {
-    await dbRun('UPDATE users SET fcm_token = ? WHERE id = ?', [token, userId]);
-    res.json({ success: true });
+    const user = await dbGet('SELECT id, name, fcm_token FROM users WHERE id = ?', [userId]);
+
+    if (!user) {
+      log('[FCM REGISTER API WARN] User not found during FCM token save attempt', { userId });
+      // Create user row if missing
+      await dbRun('INSERT INTO users (id, name, fcm_token, last_active) VALUES (?, ?, ?, ?)', [
+        userId,
+        randomName(),
+        token,
+        Date.now()
+      ]);
+    } else {
+      const tokenChanged = user.fcm_token !== token;
+      await dbRun('UPDATE users SET fcm_token = ? WHERE id = ?', [token, userId]);
+      log('[FCM REGISTER API SUCCESS] FCM token updated in database', {
+        userId,
+        userName: user.name,
+        tokenChanged
+      });
+    }
+
+    res.json({ success: true, userId });
   } catch (err) {
+    log('[FCM REGISTER API ERROR] Database update failed', { userId, error: err.message });
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
 io.on('connection', (socket) => {
-  console.log('[SERVER] Client connected', { sid: socket.id });
+  log('[SERVER] Client socket connected', { sid: socket.id });
 
   socket.on('disconnect', () => {
     const userId = sidToUserId.get(socket.id);
@@ -284,7 +419,7 @@ io.on('connection', (socket) => {
       pendingDisconnects.delete(uid);
       sidToUserId.delete(socket.id);
       await broadcastUsers();
-      console.log('[SERVER] Disconnected', uid);
+      log('[SERVER] User disconnected finalized', uid);
     };
 
     if (pendingDisconnects.has(userId)) {
@@ -296,7 +431,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('initSession', async (clientSession = {}) => {
-    let userId = clientSession ? clientSession.userId : `usr_${Math.floor(100000 + Math.random() * 900000)}`;
+    let userId = clientSession.userId || `usr_${Math.floor(100000 + Math.random() * 900000)}`;
 
     if (pendingDisconnects.has(userId)) {
       clearTimeout(pendingDisconnects.get(userId));
@@ -321,8 +456,8 @@ io.on('connection', (socket) => {
       );
       user = await dbGet('SELECT * FROM users WHERE id = ?', [userId]);
     } else {
-      const name = clientSession ? clientSession.name : randomName();
-      const expiresAt = clientSession ? clientSession.expiresAt : null;
+      const name = clientSession.name || randomName();
+      const expiresAt = clientSession.expiresAt || null;
 
       await dbRun(
         'INSERT INTO users (id, name, expires_at, last_active) VALUES (?, ?, ?, ?)',
@@ -464,7 +599,7 @@ io.on('connection', (socket) => {
       [chatKey, limit, offset]
     );
 
-    const history = rows.map(formatMessage).reverse(); // oldest -> newest
+    const history = rows.map(formatMessage).reverse();
 
     const pinnedRow = await dbGet(
       'SELECT * FROM pinned_messages WHERE chat_key = ?',
@@ -515,22 +650,36 @@ io.on('connection', (socket) => {
     const insertedMsg = await dbGet('SELECT * FROM messages WHERE id = ?', [result.lastID]);
     const msgData = formatMessage(insertedMsg);
 
-    // Emit to sender
+    // Emit to sender & recipient socket room
     socket.emit('directMessage', msgData);
-    // Emit to recipient room
     io.to(targetUserId).emit('directMessage', msgData);
 
     // Update last message cards
     socket.emit('lastMessages', { lastMessages: await calculateLastMessages(userId) });
     io.to(targetUserId).emit('lastMessages', { lastMessages: await calculateLastMessages(targetUserId) });
 
-    const target = await dbGet('SELECT fcm_token FROM users WHERE id = ?', [targetUserId]);
-    if (target && target.fcm_token) {
-      sendPushNotification(
+    // FCM Push Notification Trigger & Logging
+    log('[FCM DEBUG] Checking target user for FCM push notification...', { senderUserId: userId, targetUserId });
+    const target = await dbGet('SELECT id, name, fcm_token FROM users WHERE id = ?', [targetUserId]);
+
+    if (!target) {
+      log('[FCM WARN] Target user not found in DB', { targetUserId });
+    } else if (!target.fcm_token) {
+      log('[FCM WARN] Target user has no registered FCM token. Skipping push.', {
+        targetUserId,
+        targetUserName: target.name
+      });
+    } else {
+      log('[FCM DEBUG] Found FCM token for target user. Triggering sendPushNotification...', {
+        targetUserId,
+        targetUserName: target.name
+      });
+      await sendPushNotification(
         target.fcm_token,
         sender ? sender.name : 'Anonymous',
-        text || 'Attachment',
-        { type: 'message', userId }
+        text || (image ? '[Attachment]' : 'New Message'),
+        { type: 'message', userId, chatId: chatKey },
+        targetUserId
       );
     }
   });
@@ -709,14 +858,18 @@ io.on('connection', (socket) => {
     socket.emit('directMessage', msgDict);
     io.to(targetUserId).emit('directMessage', msgDict);
 
-    const target = await dbGet('SELECT fcm_token FROM users WHERE id = ?', [targetUserId]);
+    log('[FCM DEBUG] Forward message push notification check...', { senderUserId: userId, targetUserId });
+    const target = await dbGet('SELECT id, name, fcm_token FROM users WHERE id = ?', [targetUserId]);
     if (target && target.fcm_token) {
-      sendPushNotification(
+      await sendPushNotification(
         target.fcm_token,
         sender ? sender.name : 'Anonymous',
-        msgDict.text || 'Attachment',
-        { type: 'message', userId }
+        msgDict.text || '[Forwarded Attachment]',
+        { type: 'message', userId, chatId: chatKey },
+        targetUserId
       );
+    } else {
+      log('[FCM WARN] Target user has no FCM token for forwarded message.', { targetUserId });
     }
   });
 
@@ -787,5 +940,5 @@ io.on('connection', (socket) => {
 });
 
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`[SERVER] Node server listening on port ${PORT}`);
+  log(`[SERVER] Node server successfully started and listening on 0.0.0.0:${PORT}`);
 });
