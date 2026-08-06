@@ -99,6 +99,21 @@ function dbAll(sql, params = []) {
     `);
 
     await dbRun(`
+      CREATE TABLE IF NOT EXISTS statuses (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id TEXT NOT NULL,
+          type TEXT NOT NULL,          -- text, image, video
+          content TEXT,
+          media TEXT,
+          background TEXT DEFAULT '#111827',
+          created_at INTEGER NOT NULL,
+          expires_at INTEGER NOT NULL,
+          views TEXT DEFAULT '[]'
+      );
+      
+      `)
+
+    await dbRun(`
       CREATE TABLE IF NOT EXISTS messages (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         chat_key TEXT NOT NULL,
@@ -431,7 +446,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('initSession', async (clientSession = {}) => {
-    let userId = clientSession.userId || `usr_${Math.floor(100000 + Math.random() * 900000)}`;
+    let userId = clientSession ? clientSession.userId : `usr_${Math.floor(100000 + Math.random() * 900000)}`;
 
     if (pendingDisconnects.has(userId)) {
       clearTimeout(pendingDisconnects.get(userId));
@@ -456,8 +471,8 @@ io.on('connection', (socket) => {
       );
       user = await dbGet('SELECT * FROM users WHERE id = ?', [userId]);
     } else {
-      const name = clientSession.name || randomName();
-      const expiresAt = clientSession.expiresAt || null;
+      const name = clientSession ? clientSession.name : randomName();
+      const expiresAt = clientSession ? clientSession.expiresAt : null;
 
       await dbRun(
         'INSERT INTO users (id, name, expires_at, last_active) VALUES (?, ?, ?, ?)',
@@ -492,6 +507,65 @@ io.on('connection', (socket) => {
       allUsers: rows.map(formatUser)
     });
   });
+
+  socket.on("loadStatuses", async () => {
+    const userId = sidToUserId.get(socket.id);
+    if (!userId) return;
+
+    const now = Date.now();
+
+    const rows = await dbAll(`
+        SELECT
+            s.*,
+            u.name
+        FROM statuses s
+        JOIN users u
+            ON u.id = s.user_id
+        WHERE s.expires_at > ?
+        ORDER BY s.created_at DESC
+    `, [now]);
+
+    const grouped = {};
+
+    for (const status of rows) {
+        if (!grouped[status.user_id]) {
+            grouped[status.user_id] = {
+                userId: status.user_id,
+                username: status.name,
+                statuses: []
+            };
+        }
+
+        grouped[status.user_id].statuses.push({
+          id: status.id,
+          user_id: status.user_id,
+          username: status.name,
+          type: status.type,
+          content: status.content,
+          media: status.media,
+          background: status.background,
+          createdAt: status.created_at,
+          expiresAt: status.expires_at,
+          views: JSON.parse(status.views || "[]"),
+          viewed: JSON.parse(status.views || "[]").some(v => v.userId === userId) || status.user_id == userId
+      });
+    }
+
+    const groups = Object.values(grouped);
+
+    groups.sort((a, b) => {
+
+        // My status always first
+        if (a.userId === userId) return -1;
+        if (b.userId === userId) return 1;
+
+        // Others sorted by latest status
+        return b.statuses[0].createdAt - a.statuses[0].createdAt;
+    });
+
+    socket.emit("statusesLoaded", groups);
+});
+
 
   socket.on('updateSession', async (data = {}) => {
     const userId = sidToUserId.get(socket.id);
@@ -683,6 +757,139 @@ io.on('connection', (socket) => {
       );
     }
   });
+
+  socket.on("postStatus", async (data = {}) => {
+    const userId = sidToUserId.get(socket.id);
+    if (!userId) return;
+
+    const created = Date.now();
+    const expires = created + (24 * 60 * 60 * 1000);
+
+    await dbRun(`
+        INSERT INTO statuses
+        (user_id, type, content, media, background, created_at, expires_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    `, [
+        userId,
+        data.type,
+        data.content || null,
+        data.media || null,
+        data.background || "#111827",
+        created,
+        expires
+    ]);
+
+    io.emit("statusUpdated");
+});
+
+socket.on("viewStatus", async ({ statusId }) => {
+  const userId = sidToUserId.get(socket.id);
+  if (!userId) return;
+
+  const row = await dbGet(
+      "SELECT views FROM statuses WHERE id=?",
+      [statusId]
+  );
+
+  if (!row) return;
+
+  let views = [];
+
+  try {
+      views = JSON.parse(row.views || "[]");
+  } catch {}
+      
+    
+    if (!views.some(v => v.userId === userId)) {
+      views.push({
+          userId,
+          viewedAt: Date.now()
+      });
+  
+
+      await dbRun(
+          "UPDATE statuses SET views=? WHERE id=?",
+          [JSON.stringify(views), statusId]
+
+      );
+      log('Status viewed by' + userId)
+  }
+});
+
+socket.on("deleteStatus", async ({ statusId }) => {
+  const userId = sidToUserId.get(socket.id);
+  if (!userId) return;
+
+  const status = await dbGet(
+      "SELECT user_id FROM statuses WHERE id=?",
+      [statusId]
+  );
+
+  if (!status) {
+      socket.emit("statusError", {
+          message: "Status not found."
+      });
+      return;
+  }
+
+  if (status.user_id !== userId) {
+      socket.emit("statusError", {
+          message: "You cannot delete this status."
+      });
+      return;
+  }
+
+  await dbRun(
+      "DELETE FROM statuses WHERE id=?",
+      [statusId]
+  );
+
+  io.emit("statusUpdated");
+});
+
+socket.on("getUserStatuses", async ({ userId }) => {
+  const rows = await dbAll(`
+      SELECT *
+      FROM statuses
+      WHERE user_id=?
+      AND expires_at > ?
+      ORDER BY created_at ASC
+  `, [userId, Date.now()]);
+
+  socket.emit("userStatuses", rows);
+});
+
+socket.on("getStatusViews", async ({ statusId }) => {
+  const userId = sidToUserId.get(socket.id);
+
+  const row = await dbGet(
+      "SELECT user_id, views FROM statuses WHERE id=?",
+      [statusId]
+  );
+
+  if (!row || row.user_id !== userId) return;
+
+  const views = JSON.parse(row.views || "[]");
+
+  const viewers = [];
+
+  for (const view of views) {
+      const user = await dbGet(
+          "SELECT name FROM users WHERE id=?",
+          [view.userId]
+      );
+
+      viewers.push({
+          userId: view.userId,
+          username: user?.name || "Anonymous",
+          viewedAt: view.viewedAt
+      });
+  }
+
+  viewers.sort((a, b) => b.viewedAt - a.viewedAt);
+
+  socket.emit("statusViews", viewers);
+});
 
   socket.on('editMessage', async (data = {}) => {
     const userId = sidToUserId.get(socket.id);
