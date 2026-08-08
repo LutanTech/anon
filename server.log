@@ -1,14 +1,18 @@
-[2026-08-07T21:30:58.484Z] [SERVER] ====================================================
-[2026-08-07T21:30:58.485Z] [SERVER] SERVER STARTUP INITIATED
-[2026-08-07T21:30:58.485Z] [SERVER] ====================================================
-[2026-08-07T21:30:58.631Z] [SERVER] [FCM DEBUG] Looking for Firebase service account file at: "D:\\PYTHON\\AnonChat 2\\public\\firebase-admin.json"
-[2026-08-07T21:30:58.735Z] [SERVER] [FCM SUCCESS] Firebase Admin SDK successfully initialized {"projectId":"goal-getter-fk4sa","clientEmail":"firebase-adminsdk-fbsvc@goal-getter-fk4sa.iam.gserviceaccount.com"}
-[2026-08-07T21:30:58.742Z] [SERVER] [PROCESS ERROR] Uncaught Exception: "listen EADDRINUSE: address already in use 0.0.0.0:9000"
-[2026-08-07T21:30:58.742Z] [SERVER] Connected to SQLite database at D:\PYTHON\AnonChat 2\chat.db
-[2026-08-07T21:30:58.745Z] [SERVER] Database schema verified successfully
-[2026-08-07T21:30:59.391Z] [SERVER] [REDIS SUCCESS] Connected to Redis successfully at rediss://default:gQAAAAAAAfEOAAIgcDI0MTkzMTEzNDBhOGQ0OWIzYTJmZDQ3NGQyZjU4NWU1MQ@main-adder-127246.upstash.io:6379
-[2026-08-07T21:31:55.422Z] [SERVER] [SERVER] Client socket connected {"sid":"UwQq7KnfLM0aoNegAAAF"}
-[2026-08-07T21:31:55.447Z] [SERVER] [PROCESS WARN] Unhandled Rejection: "The client is closed"
-[2026-08-07T21:31:55.447Z] [SERVER] [PROCESS WARN] Unhandled Rejection: "The client is closed"
-[2026-08-07T21:31:55.447Z] [SERVER] [PROCESS WARN] Unhandled Rejection: "The client is closed"
-[2026-08-07T21:31:55.447Z] [SERVER] [PROCESS WARN] Unhandled Rejection: "The client is closed"
+[2026-08-07T22:41:11.392Z] [SERVER] ====================================================
+[2026-08-07T22:41:11.393Z] [SERVER] SERVER STARTUP INITIATED
+[2026-08-07T22:41:11.393Z] [SERVER] ====================================================
+[2026-08-07T22:41:11.395Z] [SERVER] [FCM DEBUG] Looking for Firebase service account file at: "D:\\PYTHON\\AnonChat 2\\public\\firebase-admin.json"
+[2026-08-07T22:41:11.476Z] [SERVER] [FCM SUCCESS] Firebase Admin SDK successfully initialized {"projectId":"goal-getter-fk4sa","clientEmail":"firebase-adminsdk-fbsvc@goal-getter-fk4sa.iam.gserviceaccount.com"}
+[2026-08-07T22:41:11.497Z] [SERVER] [SERVER] Node server successfully started and listening on 0.0.0.0:8000
+[2026-08-07T22:41:11.499Z] [SERVER] Connected to SQLite database at D:\PYTHON\AnonChat 2\chat.db
+[2026-08-07T22:41:11.512Z] [SERVER] Database schema verified successfully
+[2026-08-07T22:41:14.488Z] [SERVER] [SERVER] Client socket connected {"sid":"toeHAdM7O8J26QjhAAAN"}
+[2026-08-07T22:41:14.509Z] [SERVER] [PROCESS WARN] Unhandled Rejection: "The client is closed"
+[2026-08-07T22:41:14.509Z] [SERVER] [PROCESS WARN] Unhandled Rejection: "The client is closed"
+[2026-08-07T22:41:14.509Z] [SERVER] [PROCESS WARN] Unhandled Rejection: "The client is closed"
+[2026-08-07T22:41:14.509Z] [SERVER] [PROCESS WARN] Unhandled Rejection: "The client is closed"
+[2026-08-07T22:41:25.698Z] [SERVER] [SERVER] Client socket connected {"sid":"FuVoeKlpUGFz2emHAAAP"}
+[2026-08-07T22:41:25.776Z] [SERVER] [PROCESS WARN] Unhandled Rejection: "The client is closed"
+[2026-08-07T22:41:25.776Z] [SERVER] [PROCESS WARN] Unhandled Rejection: "The client is closed"
+[2026-08-07T22:41:25.776Z] [SERVER] [PROCESS WARN] Unhandled Rejection: "The client is closed"
+[2026-08-07T22:41:25.776Z] [SERVER] [PROCESS WARN] Unhandled Rejection: "The client is closed"

@@ -1,19 +1,24 @@
 const express = require('express');
-require('dotenv').config();
 const http = require('http');
 const path = require('path');
 const fs = require('fs');
 const { Server } = require('socket.io');
 const sqlite3 = require('sqlite3').verbose();
-const { createClient } = require('redis');
-const { createAdapter } = require('@socket.io/redis-adapter');
+
+// In-memory cache store to minimize DB reads across the application
+const cache = {
+  users: new Map(),          // userId -> formatted user object
+  messages: new Map(),       // msgId -> formatted message object
+  pinned: new Map(),         // chatKey -> pinned object or null
+  lastMessages: new Map(),   // chatKey -> { to, msg, filename }
+  statuses: new Map()        // statusId -> raw status row/object
+};
 
 const app = express();
 const server = http.createServer(app);
 
-const PORT = process.env.PORT || 9000;
+const PORT = process.env.PORT || 8000;
 const SECRET_KEY = process.env.SECRET_KEY || 'anonchat_secret_key_2026';
-const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
 app.use(express.json());
@@ -53,64 +58,6 @@ log('====================================================');
 log('SERVER STARTUP INITIATED');
 log('====================================================');
 
-// ====================================================
-// REDIS CLIENT SETUP
-// ====================================================
-process.on('unhandledRejection', (reason) => {
-  log('[PROCESS WARN] Unhandled Rejection:', reason?.message || reason);
-});
-
-process.on('uncaughtException', (err) => {
-  log('[PROCESS ERROR] Uncaught Exception:', err?.message || err);
-});
-
-// ====================================================
-// REDIS CLIENT SETUP
-// ====================================================
-const redisOptions = {
-  url: REDIS_URL,
-  socket: {
-    connectTimeout: 5000,
-    reconnectStrategy: (retries) => {
-      if (retries > 5) {
-        log('[REDIS WARN] Max reconnect attempts reached. Redis fallback mode active.');
-        return new Error('Redis connection attempt failed');
-      }
-      return Math.min(retries * 500, 2000);
-    }
-  }
-};
-
-const redisClient = createClient(redisOptions);
-const pubClient = redisClient.duplicate();
-const subClient = redisClient.duplicate();
-
-redisClient.on('error', (err) => log('[REDIS ERROR] Main Client:', err.message));
-pubClient.on('error', (err) => log('[REDIS ERROR] Pub Client:', err.message));
-subClient.on('error', (err) => log('[REDIS ERROR] Sub Client:', err.message));
-
-let isRedisConnected = false;
-
-async function initRedis() {
-  try {
-    await Promise.all([
-      redisClient.connect(),
-      pubClient.connect(),
-      subClient.connect()
-    ]);
-    isRedisConnected = true;
-    log('[REDIS SUCCESS] Connected to Redis successfully at ' + REDIS_URL);
-  } catch (err) {
-    log('[REDIS ERROR] Failed to connect to Redis. Operating with fallback logic.', { error: err.message });
-  }
-}
-
-initRedis();
-
-
-// ====================================================
-// DATABASE SETUP (SQLite)
-// ====================================================
 const DB_PATH = path.join(__dirname, 'chat.db');
 const db = new sqlite3.Database(DB_PATH, (err) => {
   if (err) {
@@ -147,55 +94,6 @@ function dbAll(sql, params = []) {
   });
 }
 
-
-async function addOnlineUser(userId, socketId) {
-  if (isRedisReady()) {
-    try {
-      await redisClient.sAdd('online_users', userId);
-      await redisClient.hSet('socket_to_user', socketId, userId);
-      return;
-    } catch (err) {
-      log('[REDIS WARN] addOnlineUser fallback to local memory:', err.message);
-    }
-  }
-  if (!onlineUsers.some((x) => x.id === userId)) {
-    onlineUsers.push({ id: userId });
-  }
-  sidToUserId.set(socketId, userId);
-}
-
-async function removeOnlineUser(socketId) {
-  if (isRedisReady()) {
-    try {
-      const userId = await redisClient.hGet('socket_to_user', socketId);
-      if (userId) {
-        await redisClient.hDel('socket_to_user', socketId);
-        await redisClient.sRem('online_users', userId);
-      }
-      return userId;
-    } catch (err) {
-      log('[REDIS WARN] removeOnlineUser fallback to local memory:', err.message);
-    }
-  }
-  const userId = sidToUserId.get(socketId);
-  sidToUserId.delete(socketId);
-  onlineUsers = onlineUsers.filter((u) => u.id !== userId);
-  return userId;
-}
-
-async function getOnlineUsers() {
-  if (isRedisReady()) {
-    try {
-      const users = await redisClient.sMembers('online_users');
-      return users.map((id) => ({ id }));
-    } catch (err) {
-      log('[REDIS WARN] getOnlineUsers fallback to local memory:', err.message);
-    }
-  }
-  return onlineUsers;
-}
-
-
 // Ensure database tables exist
 (async () => {
   try {
@@ -227,7 +125,7 @@ async function getOnlineUsers() {
       CREATE TABLE IF NOT EXISTS statuses (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id TEXT NOT NULL,
-        type TEXT NOT NULL,
+        type TEXT NOT NULL,          -- text, image, video
         content TEXT,
         media TEXT,
         background TEXT DEFAULT '#111827',
@@ -307,9 +205,8 @@ const ANIMALS = [
   'Shark', 'Whale', 'Dolphin', 'Cobra', 'Python', 'Moose', 'Buffalo'
 ];
 
-// Memory fallbacks when Redis is not available
-let localOnlineUsers = [];
-const localSidToUserId = new Map();
+let onlineUsers = [];
+const sidToUserId = new Map();
 const pendingDisconnects = new Map();
 const DISCONNECT_GRACE_SEC = 25;
 
@@ -329,6 +226,7 @@ function formatUser(row) {
     expiresAt: row.expires_at,
     lastActive: row.last_active,
     hasFcmToken: Boolean(row.fcm_token),
+    fcmToken: row.fcm_token || null,
     dp: row.dp
   };
 }
@@ -364,45 +262,69 @@ function formatMessage(row) {
   };
 }
 
-// Redis Helper Functions for Online State & Socket Mapping
-async function addOnlineUser(socketId, userId) {
-  if (isRedisConnected) {
-    await redisClient.hSet('socket_to_user', socketId, userId);
-    await redisClient.sAdd('online_users', userId);
+// Cache wrappers for Users
+async function getCachedUser(id) {
+  if (cache.users.has(id)) {
+    return cache.users.get(id);
   }
-  localSidToUserId.set(socketId, userId);
-  if (!localOnlineUsers.some((x) => x.id === userId)) {
-    localOnlineUsers.push({ id: userId });
+  const row = await dbGet('SELECT * FROM users WHERE id = ?', [id]);
+  const formatted = formatUser(row);
+  if (formatted) {
+    cache.users.set(id, formatted);
+  }
+  return formatted;
+}
+
+function setCachedUser(userObj) {
+  if (userObj && userObj.id) {
+    cache.users.set(userObj.id, userObj);
   }
 }
 
-async function removeOnlineUser(socketId, userId) {
-  if (isRedisConnected) {
-    await redisClient.hDel('socket_to_user', socketId);
-    if (userId) {
-      await redisClient.sRem('online_users', userId);
-    }
+function invalidateUserCache(id) {
+  cache.users.delete(id);
+}
+
+// Cache wrappers for Messages
+async function getCachedMessage(msgId) {
+  if (cache.messages.has(msgId)) {
+    return cache.messages.get(msgId);
   }
-  localSidToUserId.delete(socketId);
-  if (userId) {
-    localOnlineUsers = localOnlineUsers.filter((u) => u.id !== userId);
+  const row = await dbGet('SELECT * FROM messages WHERE id = ?', [msgId]);
+  const formatted = formatMessage(row);
+  if (formatted) {
+    cache.messages.set(msgId, formatted);
+  }
+  return formatted;
+}
+
+function setCachedMessage(msgObj) {
+  if (msgObj && msgObj.id) {
+    cache.messages.set(msgObj.id, msgObj);
   }
 }
 
-async function getUserIdBySocketId(socketId) {
-  if (isRedisConnected) {
-    const uid = await redisClient.hGet('socket_to_user', socketId);
-    if (uid) return uid;
-  }
-  return localSidToUserId.get(socketId);
+function invalidateMessageCache(msgId) {
+  cache.messages.delete(msgId);
 }
 
-async function getOnlineUsersList() {
-  if (isRedisConnected) {
-    const onlineIds = await redisClient.sMembers('online_users');
-    return onlineIds.map((id) => ({ id }));
+// Cache wrappers for Pinned Messages
+async function getCachedPinned(chatKey) {
+  if (cache.pinned.has(chatKey)) {
+    return cache.pinned.get(chatKey);
   }
-  return localOnlineUsers;
+  const row = await dbGet('SELECT * FROM pinned_messages WHERE chat_key = ?', [chatKey]);
+  const pinned = row ? { id: row.id, chat_key: row.chat_key, message_id: row.message_id } : null;
+  cache.pinned.set(chatKey, pinned);
+  return pinned;
+}
+
+function setCachedPinned(chatKey, pinnedObj) {
+  cache.pinned.set(chatKey, pinnedObj);
+}
+
+function invalidatePinnedCache(chatKey) {
+  cache.pinned.delete(chatKey);
 }
 
 async function sendPushNotification(token, title, body, data = {}, targetUserId = null) {
@@ -450,6 +372,8 @@ async function sendPushNotification(token, title, body, data = {}, targetUserId 
       }
     };
 
+    log('[FCM DEBUG] Sending payload to Firebase API...', { messageStructure: message });
+
     const response = await messagingAdmin.send(message);
     log('[FCM SUCCESS] Push notification sent successfully!', {
       messageId: response,
@@ -466,6 +390,7 @@ async function sendPushNotification(token, title, body, data = {}, targetUserId 
       stack: e.stack
     });
 
+    // Handle invalid registration tokens by clearing them from DB & Cache
     if (
       e.code === 'messaging/invalid-registration-token' ||
       e.code === 'messaging/registration-token-not-registered'
@@ -473,16 +398,31 @@ async function sendPushNotification(token, title, body, data = {}, targetUserId 
       log('[FCM WARN] Removing stale/invalid FCM token from DB for user:', targetUserId);
       if (targetUserId) {
         await dbRun('UPDATE users SET fcm_token = NULL WHERE id = ?', [targetUserId]).catch(() => {});
+        const cached = cache.users.get(targetUserId);
+        if (cached) {
+          cached.hasFcmToken = false;
+          cached.fcmToken = null;
+        }
       }
     }
     return false;
   }
 }
 
-async function broadcastUsers() {
+async function getAllUsers() {
+  // Return cached users list if available and complete, otherwise fetch from DB
   const rows = await dbAll('SELECT * FROM users');
-  const allUsers = rows.map(formatUser);
-  const onlineUsers = await getOnlineUsersList();
+  const allUsers = [];
+  for (const row of rows) {
+    const formatted = formatUser(row);
+    cache.users.set(row.id, formatted);
+    allUsers.push(formatted);
+  }
+  return allUsers;
+}
+
+async function broadcastUsers() {
+  const allUsers = await getAllUsers();
 
   io.emit('count', allUsers.length);
   io.emit('usersUpdate', allUsers);
@@ -507,15 +447,21 @@ function getFileIcon(type = '') {
 }
 
 async function calculateLastMessages(currentUserId) {
-  const allUsers = await dbAll('SELECT id FROM users WHERE id != ?', [currentUserId]);
+  const allUsers = await getAllUsers();
+  const filteredUsers = allUsers.filter(u => u.id !== currentUserId);
   const lastMsgs = [];
 
-  for (const user of allUsers) {
+  for (const user of filteredUsers) {
     const chatKey = getChatKey(currentUserId, user.id);
-    const last = await dbGet(
-      'SELECT text, file, file_name, file_type FROM messages WHERE chat_key = ? ORDER BY time DESC LIMIT 1',
-      [chatKey]
-    );
+    let last = cache.lastMessages.get(chatKey);
+
+    if (last === undefined) {
+      last = await dbGet(
+        'SELECT text, file, file_name, file_type FROM messages WHERE chat_key = ? ORDER BY time DESC LIMIT 1',
+        [chatKey]
+      );
+      cache.lastMessages.set(chatKey, last || null);
+    }
 
     let text = '';
     if (last) {
@@ -532,11 +478,7 @@ async function calculateLastMessages(currentUserId) {
   return lastMsgs;
 }
 
-// ====================================================
-// SOCKET.IO SETUP WITH REDIS ADAPTER
-// ====================================================
 const io = new Server(server, {
-  adapter: createAdapter(pubClient, subClient),
   cors: {
     origin: '*',
     methods: ['GET', 'POST']
@@ -558,15 +500,14 @@ app.get('/health', async (req, res) => {
   try {
     const userCount = await dbGet('SELECT COUNT(*) as count FROM users');
     const fcmCount = await dbGet('SELECT COUNT(*) as count FROM users WHERE fcm_token IS NOT NULL');
-    const onlineUsers = await getOnlineUsersList();
-    
     res.json({
       status: 'healthy',
-      redis_connected: isRedisConnected,
       online_users: onlineUsers.length,
       total_users: userCount ? userCount.count : 0,
       users_with_fcm_tokens: fcmCount ? fcmCount.count : 0,
       fcm_sdk_initialized: Boolean(messagingAdmin),
+      cached_users_count: cache.users.size,
+      cached_messages_count: cache.messages.size,
       timestamp: Date.now()
     });
   } catch (err) {
@@ -574,7 +515,6 @@ app.get('/health', async (req, res) => {
   }
 });
 
-// FCM Token Registration Endpoint
 app.post('/api/register-fcm', async (req, res) => {
   const { token, userId } = req.body || {};
 
@@ -591,10 +531,11 @@ app.post('/api/register-fcm', async (req, res) => {
   }
 
   try {
-    const user = await dbGet('SELECT id, name, fcm_token FROM users WHERE id = ?', [userId]);
+    let user = await getCachedUser(userId);
 
     if (!user) {
       log('[FCM REGISTER API WARN] User not found during FCM token save attempt', { userId });
+      // Create user row if missing
       await dbRun('INSERT INTO users (id, name, fcm_token, last_active) VALUES (?, ?, ?, ?)', [
         userId,
         randomName(),
@@ -602,7 +543,7 @@ app.post('/api/register-fcm', async (req, res) => {
         Date.now()
       ]);
     } else {
-      const tokenChanged = user.fcm_token !== token;
+      const tokenChanged = user.fcmToken !== token;
       await dbRun('UPDATE users SET fcm_token = ? WHERE id = ?', [token, userId]);
       log('[FCM REGISTER API SUCCESS] FCM token updated in database', {
         userId,
@@ -610,6 +551,10 @@ app.post('/api/register-fcm', async (req, res) => {
         tokenChanged
       });
     }
+
+    // Refresh memory cache for user
+    const updatedRow = await dbGet('SELECT * FROM users WHERE id = ?', [userId]);
+    setCachedUser(formatUser(updatedRow));
 
     res.json({ success: true, userId });
   } catch (err) {
@@ -621,13 +566,14 @@ app.post('/api/register-fcm', async (req, res) => {
 io.on('connection', (socket) => {
   log('[SERVER] Client socket connected', { sid: socket.id });
 
-  socket.on('disconnect', async () => {
-    const userId = await getUserIdBySocketId(socket.id);
+  socket.on('disconnect', () => {
+    const userId = sidToUserId.get(socket.id);
     if (!userId) return;
 
     const finalizeDisconnect = async (uid) => {
-      await removeOnlineUser(socket.id, uid);
+      onlineUsers = onlineUsers.filter((u) => u.id !== uid);
       pendingDisconnects.delete(uid);
+      sidToUserId.delete(socket.id);
       await broadcastUsers();
       log('[SERVER] User disconnected finalized', uid);
     };
@@ -649,11 +595,11 @@ io.on('connection', (socket) => {
     }
 
     const nowMs = Date.now();
-    let user = await dbGet('SELECT * FROM users WHERE id = ?', [userId]);
+    let user = await getCachedUser(userId);
 
     if (user) {
       let name = user.name;
-      let expiresAt = user.expires_at;
+      let expiresAt = user.expiresAt;
 
       if (clientSession.name && clientSession.expiresAt && nowMs < clientSession.expiresAt) {
         name = clientSession.name;
@@ -664,7 +610,9 @@ io.on('connection', (socket) => {
         'UPDATE users SET name = ?, expires_at = ?, last_active = ? WHERE id = ?',
         [name, expiresAt, nowMs, userId]
       );
-      user = await dbGet('SELECT * FROM users WHERE id = ?', [userId]);
+      const updatedRow = await dbGet('SELECT * FROM users WHERE id = ?', [userId]);
+      user = formatUser(updatedRow);
+      setCachedUser(user);
     } else {
       const name = clientSession ? clientSession.name : randomName();
       const expiresAt = clientSession ? clientSession.expiresAt : null;
@@ -673,18 +621,24 @@ io.on('connection', (socket) => {
         'INSERT INTO users (id, name, expires_at, last_active) VALUES (?, ?, ?, ?)',
         [userId, name, expiresAt, nowMs]
       );
-      user = await dbGet('SELECT * FROM users WHERE id = ?', [userId]);
+      const newRow = await dbGet('SELECT * FROM users WHERE id = ?', [userId]);
+      user = formatUser(newRow);
+      setCachedUser(user);
     }
 
-    await addOnlineUser(socket.id, userId);
+    sidToUserId.set(socket.id, userId);
     socket.join(userId);
 
     socket.emit('sessionReady', {
       userId: user.id,
       name: user.name,
-      expiresAt: user.expires_at,
+      expiresAt: user.expiresAt,
       dp: user.dp
     });
+
+    if (!onlineUsers.some((x) => x.id === user.id)) {
+      onlineUsers.push({ id: user.id });
+    }
 
     await broadcastUsers();
 
@@ -694,14 +648,12 @@ io.on('connection', (socket) => {
   });
 
   socket.on('loadUsers', async () => {
-    const rows = await dbAll('SELECT * FROM users');
-    socket.emit('usersLoaded', {
-      allUsers: rows.map(formatUser)
-    });
+    const allUsers = await getAllUsers();
+    socket.emit('usersLoaded', { allUsers });
   });
 
   socket.on("loadStatuses", async () => {
-    const userId = await getUserIdBySocketId(socket.id);
+    const userId = sidToUserId.get(socket.id);
     if (!userId) return;
 
     const now = Date.now();
@@ -746,37 +698,43 @@ io.on('connection', (socket) => {
     const groups = Object.values(grouped);
 
     groups.sort((a, b) => {
+        // My status always first
         if (a.userId === userId) return -1;
         if (b.userId === userId) return 1;
+
+        // Others sorted by latest status
         return b.statuses[0].createdAt - a.statuses[0].createdAt;
     });
 
     socket.emit("statusesLoaded", groups);
-});
+  });
 
   socket.on('updateSession', async (data = {}) => {
-    const userId = await getUserIdBySocketId(socket.id);
+    const userId = sidToUserId.get(socket.id);
     if (!userId) return;
 
-    const user = await dbGet('SELECT * FROM users WHERE id = ?', [userId]);
+    const user = await getCachedUser(userId);
     if (!user) return;
 
     const newName = data.newName || user.name;
-    const expiresAt = data.expiresAt !== undefined ? data.expiresAt : user.expires_at;
+    const expiresAt = data.expiresAt !== undefined ? data.expiresAt : user.expiresAt;
 
     await dbRun(
       'UPDATE users SET name = ?, expires_at = ?, last_active = ? WHERE id = ?',
       [newName, expiresAt, Date.now(), userId]
     );
 
+    const updatedRow = await dbGet('SELECT * FROM users WHERE id = ?', [userId]);
+    setCachedUser(formatUser(updatedRow));
+
     await broadcastUsers();
   });
 
   socket.on('requestNewIdentity', async () => {
-    const userId = await getUserIdBySocketId(socket.id);
+    const userId = sidToUserId.get(socket.id);
     if (!userId) return;
 
-    const user = await dbGet('SELECT * FROM users WHERE id = ?', [userId]);
+    const user = await getCachedUser(userId);
     if (!user) return;
 
     const oldName = user.name;
@@ -786,6 +744,9 @@ io.on('connection', (socket) => {
       'UPDATE users SET name = ?, expires_at = NULL WHERE id = ?',
       [newName, userId]
     );
+
+    const updatedRow = await dbGet('SELECT * FROM users WHERE id = ?', [userId]);
+    setCachedUser(formatUser(updatedRow));
 
     socket.emit('sessionReady', {
       userId: user.id,
@@ -798,7 +759,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('setUsername', async (data = {}) => {
-    const userId = await getUserIdBySocketId(socket.id);
+    const userId = sidToUserId.get(socket.id);
     if (!userId) return;
 
     const username = (data.username || '').trim();
@@ -813,7 +774,7 @@ io.on('connection', (socket) => {
       return;
     }
 
-    const user = await dbGet('SELECT * FROM users WHERE id = ?', [userId]);
+    const user = await getCachedUser(userId);
     if (!user) return;
 
     const existing = await dbGet(
@@ -829,11 +790,14 @@ io.on('connection', (socket) => {
     const oldName = user.name;
     await dbRun('UPDATE users SET name = ? WHERE id = ?', [username, userId]);
 
+    const updatedRow = await dbGet('SELECT * FROM users WHERE id = ?', [userId]);
+    setCachedUser(formatUser(updatedRow));
+
     socket.emit('sessionReady', {
       userId: user.id,
       name: username,
       dp: user.dp,
-      expiresAt: user.expires_at,
+      expiresAt: user.expiresAt,
       oldName
     });
 
@@ -841,41 +805,49 @@ io.on('connection', (socket) => {
   });
 
   socket.on('deleteDp', async (data = {}) => {
-    const userId = await getUserIdBySocketId(socket.id);
+    const userId = sidToUserId.get(socket.id);
     if (!userId) return;
 
-    const user = await dbGet('SELECT * FROM users WHERE id = ?', [userId]);
+    const user = await getCachedUser(userId);
     if (!user) return;
 
-    if (user.dp == 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTSuJxruKI4Dzpax96RDs4byyus5J7xpph9moTDEt5DoA&s=10') return;
+    const defaultDp = 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTSuJxruKI4Dzpax96RDs4byyus5J7xpph9moTDEt5DoA&s=10';
+    if (user.dp === defaultDp) return;
 
-    await dbRun('UPDATE users SET dp = ? WHERE id = ?', ['https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTSuJxruKI4Dzpax96RDs4byyus5J7xpph9moTDEt5DoA&s=10', userId]);
+    await dbRun('UPDATE users SET dp = ? WHERE id = ?', [defaultDp, userId]);
+
+    const updatedRow = await dbGet('SELECT * FROM users WHERE id = ?', [userId]);
+    const updatedUser = formatUser(updatedRow);
+    setCachedUser(updatedUser);
 
     socket.emit('dpDeleted', {
-      dp: user.dp
+      dp: updatedUser.dp
     });
 
     await broadcastUsers();
   });
 
   socket.on('changeDp', async (data = {}) => {
-    const userId = await getUserIdBySocketId(socket.id);
+    const userId = sidToUserId.get(socket.id);
     if (!userId) return;
 
-    const user = await dbGet('SELECT * FROM users WHERE id = ?', [userId]);
     const dp = (data.dp || '');
 
     await dbRun('UPDATE users SET dp = ? WHERE id = ?', [dp, userId]);
 
+    const updatedRow = await dbGet('SELECT * FROM users WHERE id = ?', [userId]);
+    const updatedUser = formatUser(updatedRow);
+    setCachedUser(updatedUser);
+
     socket.emit('dpChanged', {
-      dp: user.dp
+      dp: updatedUser.dp
     });
 
     await broadcastUsers();
   });
 
   socket.on('loadDirectHistory', async (data = {}) => {
-    const userId = await getUserIdBySocketId(socket.id);
+    const userId = sidToUserId.get(socket.id);
     const targetUserId = data.targetUserId;
 
     if (!userId || !targetUserId) return;
@@ -895,27 +867,30 @@ io.on('connection', (socket) => {
       [chatKey, limit, offset]
     );
 
-    const history = rows.map(formatMessage).reverse();
+    const history = [];
+    for (const r of rows) {
+      const msg = formatMessage(r);
+      setCachedMessage(msg);
+      history.push(msg);
+    }
+    history.reverse();
 
-    const pinnedRow = await dbGet(
-      'SELECT * FROM pinned_messages WHERE chat_key = ?',
-      [chatKey]
-    );
+    const pinnedObj = await getCachedPinned(chatKey);
 
-    const user = await dbGet('SELECT * FROM users WHERE id = ?', [userId]);
+    const user = await getCachedUser(userId);
     if (!user) return;
 
     socket.emit('directHistoryLoaded', {
       targetUserId,
       dp: user.dp,
       history,
-      pinned: pinnedRow ? { id: pinnedRow.id, chat_key: pinnedRow.chat_key, message_id: pinnedRow.message_id } : null,
+      pinned: pinnedObj,
       hasMore: offset + limit < total
     });
   });
 
   socket.on('directMessage', async (payload = {}) => {
-    const userId = await getUserIdBySocketId(socket.id);
+    const userId = sidToUserId.get(socket.id);
     if (!userId || !payload) return;
 
     const targetUserId = payload.targetUserId;
@@ -930,7 +905,7 @@ io.on('connection', (socket) => {
 
     if (!text && !file) return;
 
-    const sender = await dbGet('SELECT * FROM users WHERE id = ?', [userId]);
+    const sender = await getCachedUser(userId);
     const senderName = sender?.name || 'Anonymous';
     const chatKey = getChatKey(userId, targetUserId);
     const nowMs = Date.now();
@@ -947,10 +922,17 @@ io.on('connection', (socket) => {
       [chatKey]
     );
 
-    for (const oldMsg of oldMessages)
+    for (const oldMsg of oldMessages) {
       await dbRun('DELETE FROM messages WHERE id = ?', [oldMsg.id]);
+      invalidateMessageCache(oldMsg.id);
+    }
 
-    const msgData = formatMessage(await dbGet('SELECT * FROM messages WHERE id = ?', [result.lastID]));
+    const insertedRow = await dbGet('SELECT * FROM messages WHERE id = ?', [result.lastID]);
+    const msgData = formatMessage(insertedRow);
+    setCachedMessage(msgData);
+
+    // Update preview last message cache
+    cache.lastMessages.set(chatKey, insertedRow);
 
     socket.emit('directMessage', msgData);
     io.to(targetUserId).emit('directMessage', msgData);
@@ -963,14 +945,11 @@ io.on('connection', (socket) => {
       lastMessages: await calculateLastMessages(targetUserId)
     });
 
-    const target = await dbGet(
-      'SELECT id, name, fcm_token FROM users WHERE id = ?',
-      [targetUserId]
-    );
+    const target = await getCachedUser(targetUserId);
 
-    if (target?.fcm_token) {
+    if (target?.fcmToken) {
       await sendPushNotification(
-        target.fcm_token,
+        target.fcmToken,
         senderName,
         text || fileName || '📎 Attachment',
         { type: 'message', userId, chatId: chatKey },
@@ -980,7 +959,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on("postStatus", async (data = {}) => {
-    const userId = await getUserIdBySocketId(socket.id);
+    const userId = sidToUserId.get(socket.id);
     if (!userId) return;
 
     const created = Date.now();
@@ -1004,19 +983,21 @@ io.on('connection', (socket) => {
   });
 
   socket.on("viewStatus", async ({ statusId }) => {
-    const userId = await getUserIdBySocketId(socket.id);
+    const userId = sidToUserId.get(socket.id);
     if (!userId) return;
 
     const row = await dbGet(
-      "SELECT views FROM statuses WHERE id=?",
-      [statusId]
+        "SELECT views FROM statuses WHERE id=?",
+        [statusId]
     );
 
     if (!row) return;
 
     let views = [];
-    try { views = JSON.parse(row.views || "[]"); } catch {}
-      
+    try {
+      views = JSON.parse(row.views || "[]");
+    } catch {}
+
     if (!views.some(v => v.userId === userId)) {
       views.push({
         userId,
@@ -1032,7 +1013,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on("deleteStatus", async ({ statusId }) => {
-    const userId = await getUserIdBySocketId(socket.id);
+    const userId = sidToUserId.get(socket.id);
     if (!userId) return;
 
     const status = await dbGet(
@@ -1067,7 +1048,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on("getStatusViews", async ({ statusId }) => {
-    const userId = await getUserIdBySocketId(socket.id);
+    const userId = sidToUserId.get(socket.id);
 
     const row = await dbGet(
       "SELECT user_id, views FROM statuses WHERE id=?",
@@ -1080,10 +1061,7 @@ io.on('connection', (socket) => {
     const viewers = [];
 
     for (const view of views) {
-      const user = await dbGet(
-        "SELECT name FROM users WHERE id=?",
-        [view.userId]
-      );
+      const user = await getCachedUser(view.userId);
 
       viewers.push({
         userId: view.userId,
@@ -1097,10 +1075,10 @@ io.on('connection', (socket) => {
   });
 
   socket.on('editMessage', async (data = {}) => {
-    const userId = await getUserIdBySocketId(socket.id);
+    const userId = sidToUserId.get(socket.id);
     if (!userId) return;
 
-    const msg = await dbGet('SELECT * FROM messages WHERE id = ?', [data.msgId]);
+    const msg = await getCachedMessage(data.msgId);
     if (!msg || msg.user_id !== userId) return;
 
     const newText = (data.newText || '').trim();
@@ -1109,6 +1087,9 @@ io.on('connection', (socket) => {
     await dbRun('UPDATE messages SET text = ?, edited = 1 WHERE id = ?', [newText, msg.id]);
     const updated = await dbGet('SELECT * FROM messages WHERE id = ?', [msg.id]);
     const msgData = formatMessage(updated);
+    setCachedMessage(msgData);
+
+    cache.lastMessages.delete(msg.chat_key);
 
     const payload = { chatKey: msg.chat_key, msg: msgData };
     socket.emit('messageUpdated', payload);
@@ -1116,29 +1097,31 @@ io.on('connection', (socket) => {
   });
 
   socket.on('togglePinMessage', async (data = {}) => {
-    const userId = await getUserIdBySocketId(socket.id);
+    const userId = sidToUserId.get(socket.id);
     if (!userId) return;
 
     const chatKey = getChatKey(userId, data.targetUserId);
-    const msg = await dbGet('SELECT * FROM messages WHERE id = ?', [data.msgId]);
+    const msg = await getCachedMessage(data.msgId);
 
     if (!msg) return;
 
-    const pinned = await dbGet('SELECT * FROM pinned_messages WHERE chat_key = ?', [chatKey]);
+    const pinned = await getCachedPinned(chatKey);
 
     if (pinned && pinned.message_id === msg.id) {
       await dbRun('DELETE FROM pinned_messages WHERE chat_key = ?', [chatKey]);
+      invalidatePinnedCache(chatKey);
     } else {
       if (pinned) {
         await dbRun('DELETE FROM pinned_messages WHERE chat_key = ?', [chatKey]);
       }
       await dbRun('INSERT INTO pinned_messages (chat_key, message_id) VALUES (?, ?)', [chatKey, msg.id]);
+      invalidatePinnedCache(chatKey);
     }
 
-    const updatedPinned = await dbGet('SELECT * FROM pinned_messages WHERE chat_key = ?', [chatKey]);
+    const updatedPinned = await getCachedPinned(chatKey);
     const payload = {
       chatKey,
-      pinned: updatedPinned ? { id: updatedPinned.id, chat_key: updatedPinned.chat_key, message_id: updatedPinned.message_id } : null
+      pinned: updatedPinned
     };
 
     socket.emit('pinnedUpdate', payload);
@@ -1146,22 +1129,21 @@ io.on('connection', (socket) => {
   });
 
   socket.on('markRead', async (data = {}) => {
-    const userId = await getUserIdBySocketId(socket.id);
+    const userId = sidToUserId.get(socket.id);
     const targetUserId = data.targetUserId;
     const msgIds = Array.isArray(data.msgIds) ? data.msgIds : [];
 
     if (!userId || !targetUserId || !msgIds.length) return;
 
-    const user = await dbGet('SELECT name FROM users WHERE id = ?', [userId]);
+    const user = await getCachedUser(userId);
     const chatKey = getChatKey(userId, targetUserId);
     let updated = false;
 
     for (const id of msgIds) {
-      const msg = await dbGet('SELECT * FROM messages WHERE id = ? AND chat_key = ?', [id, chatKey]);
+      const msg = await getCachedMessage(id);
       if (!msg || msg.user_id === userId) continue;
 
-      let readBy = [];
-      try { readBy = msg.read_by ? JSON.parse(msg.read_by) : []; } catch (e) {}
+      let readBy = msg.read_by || [];
 
       if (!readBy.some((r) => r.userId === userId)) {
         readBy.push({
@@ -1170,6 +1152,9 @@ io.on('connection', (socket) => {
           time: Date.now()
         });
         await dbRun('UPDATE messages SET read_by = ? WHERE id = ?', [JSON.stringify(readBy), id]);
+        
+        const updatedRow = await dbGet('SELECT * FROM messages WHERE id = ?', [id]);
+        setCachedMessage(formatMessage(updatedRow));
         updated = true;
       }
     }
@@ -1186,21 +1171,20 @@ io.on('connection', (socket) => {
   });
 
   socket.on('toggleReaction', async (data = {}) => {
-    const userId = await getUserIdBySocketId(socket.id);
+    const userId = sidToUserId.get(socket.id);
     if (!userId) return;
 
-    const msg = await dbGet('SELECT * FROM messages WHERE id = ?', [data.msgId]);
+    const msg = await getCachedMessage(data.msgId);
     if (!msg) return;
 
     const emoji = data.emoji;
     if (!emoji) return;
 
-    let reactions = {};
-    try { reactions = msg.reactions ? JSON.parse(msg.reactions) : {}; } catch (e) {}
+    let reactions = msg.reactions || {};
 
     if (!reactions[emoji]) reactions[emoji] = [];
 
-    const user = await dbGet('SELECT name FROM users WHERE id = ?', [userId]);
+    const user = await getCachedUser(userId);
     const idx = reactions[emoji].findIndex((r) => r.userId === userId);
 
     if (idx >= 0) {
@@ -1217,34 +1201,41 @@ io.on('connection', (socket) => {
 
     await dbRun('UPDATE messages SET reactions = ? WHERE id = ?', [JSON.stringify(reactions), msg.id]);
     const updated = await dbGet('SELECT * FROM messages WHERE id = ?', [msg.id]);
-    const payload = { chatKey: msg.chat_key, msg: formatMessage(updated) };
+    const msgData = formatMessage(updated);
+    setCachedMessage(msgData);
+
+    const payload = { chatKey: msg.chat_key, msg: msgData };
 
     socket.emit('messageUpdated', payload);
     io.to(msg.target_user_id).emit('messageUpdated', payload);
   });
 
   socket.on('deleteMessage', async (data = {}) => {
-    const userId = await getUserIdBySocketId(socket.id);
+    const userId = sidToUserId.get(socket.id);
     if (!userId) return;
 
-    const msg = await dbGet('SELECT * FROM messages WHERE id = ?', [data.msgId]);
+    const msg = await getCachedMessage(data.msgId);
     if (!msg || msg.user_id !== userId) return;
 
     await dbRun('DELETE FROM pinned_messages WHERE chat_key = ? AND message_id = ?', [msg.chat_key, msg.id]);
     await dbRun('DELETE FROM messages WHERE id = ?', [msg.id]);
+
+    invalidateMessageCache(msg.id);
+    invalidatePinnedCache(msg.chat_key);
+    cache.lastMessages.delete(msg.chat_key);
 
     socket.emit('messageDeleted', { targetUserId: msg.target_user_id, msgId: msg.id });
     io.to(msg.target_user_id).emit('messageDeleted', { targetUserId: userId, msgId: msg.id });
   });
 
   socket.on('forwardMessage', async (data = {}) => {
-    const userId = await getUserIdBySocketId(socket.id);
+    const userId = sidToUserId.get(socket.id);
     const targetUserId = data.targetUserId;
     const message = data.message || {};
 
     if (!userId || !targetUserId) return;
 
-    const sender = await dbGet('SELECT name FROM users WHERE id = ?', [userId]);
+    const sender = await getCachedUser(userId);
     const chatKey = getChatKey(userId, targetUserId);
     const nowMs = Date.now();
     const replyTo = message.replyTo ? JSON.stringify(message.replyTo) : null;
@@ -1258,15 +1249,18 @@ io.on('connection', (socket) => {
 
     const insertedMsg = await dbGet('SELECT * FROM messages WHERE id = ?', [result.lastID]);
     const msgDict = formatMessage(insertedMsg);
+    setCachedMessage(msgDict);
+    cache.lastMessages.set(chatKey, insertedMsg);
 
     socket.emit('directMessage', msgDict);
     io.to(targetUserId).emit('directMessage', msgDict);
 
     log('[FCM DEBUG] Forward message push notification check...', { senderUserId: userId, targetUserId });
-    const target = await dbGet('SELECT id, name, fcm_token FROM users WHERE id = ?', [targetUserId]);
-    if (target && target.fcm_token) {
+    const target = await getCachedUser(targetUserId);
+
+    if (target && target.fcmToken) {
       await sendPushNotification(
-        target.fcm_token,
+        target.fcmToken,
         sender ? sender.name : 'Anonymous',
         msgDict.text || '[Forwarded Attachment]',
         { type: 'message', userId, chatId: chatKey },
@@ -1278,7 +1272,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('callUser', async (data = {}) => {
-    const callerId = await getUserIdBySocketId(socket.id);
+    const callerId = sidToUserId.get(socket.id);
     const targetUserId = data.targetUserId;
 
     if (!callerId || !targetUserId) return;
@@ -1313,8 +1307,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('acceptCall', async (data = {}) => {
-    const userId = await getUserIdBySocketId(socket.id);
-
+    const userId = sidToUserId.get(socket.id);
     if (!userId || !data.callId) return;
 
     await dbRun(
@@ -1368,6 +1361,8 @@ io.on('connection', (socket) => {
   });
 
   socket.on('endCall', async (data = {}) => {
+    console.log(data);
+
     if (data.callId) {
       const call = await dbGet(
         "SELECT started_at FROM calls WHERE id=?",
@@ -1399,8 +1394,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('typing', async (data = {}) => {
-    const currentUserId = await getUserIdBySocketId(socket.id);
-    const user = await dbGet('SELECT id, name FROM users WHERE id = ?', [currentUserId]);
+    const user = await getCachedUser(sidToUserId.get(socket.id));
     if (user && data.targetUserId) {
       io.to(data.targetUserId).emit('typing', {
         fromUserId: user.id,
@@ -1409,8 +1403,8 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('stopTyping', async (data = {}) => {
-    const userId = await getUserIdBySocketId(socket.id);
+  socket.on('stopTyping', (data = {}) => {
+    const userId = sidToUserId.get(socket.id);
     if (userId && data.targetUserId) {
       io.to(data.targetUserId).emit('stopTyping', {
         fromUserId: userId
