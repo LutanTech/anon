@@ -248,8 +248,8 @@
 								<i class="fa-solid fa-shield-halved text-sm"></i>
 							</div>
 							<div class="text-[11px] leading-tight">
-								<span class="font-bold text-emerald-200"> End-to-End Encryption.</span>
-								<p class="text-slate-400 text-[10px] mt-0.5">Direct messaging & International calls with no account required.</p>
+								<span class="font-bold text-emerald-200"> Beta Version.</span>
+								<p class="text-slate-400 text-[10px] mt-0.5">You have been selected to test the app's functionality and ease of use. Please visit <a class="text-green-400 underline" href="https://lutan-tech.is-great.org/"> our Website </a>  for more info.</p>
 							</div>
                             
 						</div>
@@ -273,10 +273,10 @@
 
 					<div class="flex-1 overflow-y-auto px-4 py-2 space-y-2">
 						<div class="flex items-center justify-between px-1 mb-1">
-							<span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Active Anonymous Peers</span>
+							<span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Active Users</span>
 							<span id="user-count-badge"
 								class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">0
-								Online</span>
+								</span>
 						</div>
 
 						<div id="online-users-list" class=" pb-16 md:pb-4">
@@ -408,6 +408,7 @@
 								<div class="text-xs text-slate-400">
 									Tap to add status update
 								</div>
+                                <div id="status-upload-progress" class="text-xs text-slate-400"></div>
 							</div>
 
 						</div>
@@ -1114,6 +1115,7 @@
         let selectedFileType = null;
         let selectedFileSize = null;
         let myDp = '/alt-user.png'
+        let calls = [];
 
         const statusColors = [
             "#2563eb",
@@ -1239,7 +1241,27 @@
                 dialtoneCtx = null;
             }
         }
+
+        function formatMessageTime(timestamp) {
+            if (!timestamp) return '';
         
+            const date = new Date(Number(timestamp));
+            const now = new Date();
+        
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const msgDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        
+            const diff = Math.floor((today - msgDay) / 86400000);
+        
+            if (diff === 0) return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            if (diff === 1) return 'Yesterday';
+            if (diff < 7) return date.toLocaleDateString([], { weekday: 'long' });
+        
+            return date.getFullYear() === now.getFullYear()
+                ? date.toLocaleDateString([], { day: '2-digit', month: 'short' })
+                : date.toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' });
+        }
+
         function showToast(message, type = "info")
         {
             const container = document.getElementById('toast-container');
@@ -1324,43 +1346,48 @@
                 showOfflineBanner("Reconnecting to server...");
             });
         
-            socket.on('sessionReady', (data) =>
-            {
+            socket.on('sessionReady', (data) => {
+                if (!data?.userId) return;
+            
                 myUserId = data.userId;
                 myUsername = data.name;
-                myDp = data.dp ? data.dp :''
-
-                saveSessionLocally(
-                {
+                myDp = data.dp || '';
+            
+                saveSessionLocally({
                     userId: myUserId,
                     name: myUsername,
-                    dp:myDp
+                    dp: myDp
                 });
-                
-                document.getElementById('my-username')
-                    .value = myUsername;
-                
-                data.dp ? document.getElementById('user-dp')
-                    .src = data.dp : '';
-                
-                data.dp ? document.getElementById('large-dp-image')
-                    .src = data.dp : '';
-
-                document.getElementById('settings-username-label')
-                    .innerText = myUsername;
-                document.getElementById('user-avatar')
-                    .src = myDp
-                hideOfflineBanner();
-                if (data.oldName)
-                {
-                    showToast(`Identity changed to ${myUsername}`);
-                    document.querySelector('#save-name')
-                        .innerHTML = '<i class="fa-solid fa-edit text-sm"></i>';
-                    document.querySelector('#my-username')
-                        .disabled = true;
+            
+                document.getElementById('my-username').value = myUsername;
+            
+                if (data.dp) {
+                    document.getElementById('user-dp').src = data.dp;
+                    document.getElementById('large-dp-image').src = data.dp;
                 }
+            
+                document.getElementById('settings-username-label').innerText = myUsername;
+                document.getElementById('user-avatar').src = myDp;
+            
+                hideOfflineBanner();
+            
+                if (data.oldName) {
+                    showToast(`Identity changed to ${myUsername}`);
+            
+                    document.querySelector('#save-name').innerHTML =
+                        '<i class="fa-solid fa-edit text-sm"></i>';
+            
+                    document.querySelector('#my-username').disabled = true;
+                }
+
+                socket.emit('loadCalls');
             });
-        
+
+            socket.on('callsLoaded', ({ allCalls = [] }) => {
+                calls = allCalls;
+                renderCallHistory()
+            });
+
             socket.on("statusesLoaded", (groups) =>
             {
                 statusGroups = groups || [];
@@ -1373,28 +1400,24 @@
                 document.getElementById('end-call-btn').setAttribute('onclick', `endActiveCall('${data.callId}')`)
                 activeCallId = data.callId 
             })
-        
-            socket.on('lastMessages', (data) =>
-            {
-                if (data && data.lastMessages)
-                {
-                    data.lastMessages.forEach(item =>
-                    {
-                        lastMessagesMap[item.to] = {msg:item.msg, filename:item.filename};
-                        if (item.time || item.timestamp)
-                        {
-                            lastMessageTimestampMap[item.to] = new Date(item.time || item.timestamp)
-                                .getTime();
-                        }
-                    });
-                    renderOnlineUsers();
-                }
-            });
+            
+            socket.on('lastMessages', data => {
+                if (!data?.lastMessages) return;
 
+                console.log(data.lastMessages)
+            
+                data.lastMessages.forEach(item => {
+                    lastMessagesMap[item.peerId] = item;
+                    lastMessageTimestampMap[item.peerId] = item.at || 0;
+                });
+            
+                renderOnlineUsers();
+            });
             socket.on('dpDeleted', (data=>{
               showToast('Profile picture deleted', 'success')
               closeDpModal()
-              window.location.reload()
+              const saved = loadSavedSession();
+              socket.emit('initsession', saved)
             })
             )
         
@@ -1481,6 +1504,18 @@
                 document.getElementById("history-loader")
                     .classList.add("hidden");
                 loadingHistory = false;
+
+                const unreadIds = history
+                .filter(m => m.user_id !== myUserId)
+                .map(m => m.id);
+            
+            if (unreadIds.length) {
+                socket.emit('markRead', {
+                    targetUserId,
+                    msgIds: unreadIds
+                });
+            }
+
             });
         
             socket.on("usersLoaded", (
@@ -1500,6 +1535,8 @@
             socket.on('dpChanged',( data=> {
                 showToast('Profile picture changed successfully', 'success')
                 myDp = data.dp
+                const saved = loadSavedSession();
+                socket.emit('initSession', saved)
                 closeDpModal()
             }
             )
@@ -1579,6 +1616,8 @@
         
             socket.on('messagesRead', (data) => {
                 if (!data || !data.msgIds) return;
+
+                
             
                 data.msgIds.forEach(id => {
                     const msgEl = document.querySelector(`[data-msg-id="${id}"]`);
@@ -1597,6 +1636,9 @@
                         }
                     }
                 });
+
+                renderOnlineUsers()
+                console.log('rendering users')
             });
 
             socket.on("statusUpdated", () =>
@@ -1645,6 +1687,10 @@
                     indicator.classList.remove('opacity-0');
                 }
             });
+
+            socket.on("statusViewed", (data)=> {
+                showToast((data.viewer ? data.viewer.name : 'Someone ') +  " viewed your status:", 'success');
+            });
         
             socket.on('stopTyping', (
             {
@@ -1679,6 +1725,44 @@
 
                 document.getElementById('end-call-btn').setAttribute('onclick', `endActiveCall('${data.callId}')`) 
                 toggleRingtone(true);
+            });
+
+            socket.on('callsDeleted', ({ callIds = [] }) => {
+                calls = calls.filter(call => !callIds.includes(call.id));
+            
+                callIds.forEach(id => selectedCallIds.delete(id));
+            
+                callSelectMode = false;
+                selectedCallIds.clear();
+            
+                renderCallHistory();
+            });
+
+            socket.on('callUpdated', call => {
+                const index = calls.findIndex(c => c.id === call.id);
+
+
+                if(call.status == 'ended' || call.status == 'missed'){
+                    console.log('----------------------------')
+                    callTimeoutTimer = false;
+                    endActiveCall(activeCallId)
+                    stopDialtone()
+                    toggleRingtone(false)
+
+                    if (callCheckInterval) {
+                        clearInterval(callCheckInterval);
+                        callCheckInterval = null;
+                    }
+                    
+                }
+            
+                if (index !== -1) {
+                    calls[index] = call;
+                } else {
+                    calls.unshift(call);
+                }
+            
+                renderCallHistory();
             });
         
             socket.on('callAccepted', async (data) =>
@@ -1932,6 +2016,7 @@
                 .disabled = false;
         
             const cache = chatCache[targetUserId];
+            
         
             if (cache?.loaded)
             {
@@ -2225,7 +2310,11 @@
                 currentX = 0;
             });
         
-            wrap.oncontextmenu = (e) => handleContextMenu(e, msg.id);
+             if(msg.deleted){
+                wrap.oncontextmenu = (e) => window;                
+             } else{
+                 wrap.oncontextmenu = (e) => handleContextMenu(e, msg.id) 
+                }
         
             let replyHTML = '';
             if (msg.reply_to)
@@ -2239,7 +2328,7 @@
                         </div>
                         <div class="flex flex-col ml-2 justify-start " style="max-width: 80%; padding-right: 10px;">
                             <span class="font-bold text-brand-300 truncate">${escapeHTML(parentName)}</span>
-                            <span class="text-slate-300 truncate text-[10px]">${escapeHTML(parentText)}</span>
+                            <span class="text-slate-300 truncate text-[10px]">${String(escapeHTML(parentText)).length > 50 ? String(escapeHTML(parentText)).slice(0, 50) + '...' : String(escapeHTML(parentText))}</span>
                         </div>
                     </div>
                 </div>`;
@@ -2354,18 +2443,11 @@
                     minute: '2-digit'
                 }) : '';
         
-            wrap.innerHTML = `
-                <div class="opacity-0 group-hover:opacity-100 transition-opacity duration-150 absolute -top-3 ${isMe ? 'left-[-40px]' : 'right-[-90px]'} z-20 flex items-center gap-0.5 bg-slate-900/90 border border-slate-700/80 rounded-lg p-1 shadow-lg backdrop-blur-sm">
-                    <button class="hover:bg-slate-800 text-slate-300 hover:text-brand-400 text-xs w-6 h-6 rounded flex items-center justify-center transition-colors" title="Reply">
-                        <i class="fa-solid fa-reply"></i>
-                    </button>
-                    <button class="hover:bg-slate-800 text-slate-300 hover:text-brand-400 text-xs w-6 h-6 rounded flex items-center justify-center transition-colors" title="Forward">
-                        <i class="fa-solid fa-share"></i>
-                    </button>
-                    <button class="hover:bg-slate-800 text-slate-300 hover:text-brand-400 text-xs w-6 h-6 rounded flex items-center justify-center transition-colors" title="Message Info">
-                        <i class="fa-solid fa-circle-info"></i>
-                    </button>
-                </div>
+            wrap.innerHTML = ` ${msg.deleted ?  '': `
+                <div onclick="handleContextMenu(event, ${msg.id})" class="opacity-0 group-hover:opacity-100  transition-opacity cursor-pointer duration-150 z-20 flex items-center gap-0.5  justufy-end absolute p-1 ${isMe ? 'left-0' : 'right-0'} top-4" style="width:35%; align-items: flex-end; ${isMe ? ' justify-content: start;   background: linear-gradient(to left, transparent, transparent, #005007);  border-top-left-radius:5px' : ' justify-content: end; background:linear-gradient(to right, transparent, #00000000, #124212); border-top-right-radius:5px'}">
+                    <svg width="15px" height="15px" viewBox="-7.4 -7.4 34.80 34.80" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" fill="#000000"><g id="SVGRepo_bgCarrier" stroke-width="0" transform="translate(0,0), scale(1)"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round" stroke="#0e0c0c" stroke-width="4"> <title>arrow_down [#ffffff]</title> <desc>Created with Sketch.</desc> <defs> </defs> <g id="Page-1" stroke-width="2" fill="none" fill-rule="evenodd"> <g id="Dribbble-Light-Preview" transform="translate(-220.000000, -6684.000000)" fill="#ffffff"> <g id="icons" transform="translate(56.000000, 160.000000)"> <path d="M164.292308,6524.36583 L164.292308,6524.36583 C163.902564,6524.77071 163.902564,6525.42619 164.292308,6525.83004 L172.555873,6534.39267 C173.33636,6535.20244 174.602528,6535.20244 175.383014,6534.39267 L183.70754,6525.76791 C184.093286,6525.36716 184.098283,6524.71997 183.717533,6524.31405 C183.328789,6523.89985 182.68821,6523.89467 182.29347,6524.30266 L174.676479,6532.19636 C174.285736,6532.60124 173.653152,6532.60124 173.262409,6532.19636 L165.705379,6524.36583 C165.315635,6523.96094 164.683051,6523.96094 164.292308,6524.36583" id="arrow_down-[#ffffff]"> </path> </g> </g> </g> </g><g id="SVGRepo_iconCarrier"> <title>arrow_down [#ffffff]</title> <desc>Created with Sketch.</desc> <defs> </defs> <g id="Page-1" stroke-width="2" fill="none" fill-rule="evenodd"> <g id="Dribbble-Light-Preview" transform="translate(-220.000000, -6684.000000)" fill="#ffffff"> <g id="icons" transform="translate(56.000000, 160.000000)"> <path d="M164.292308,6524.36583 L164.292308,6524.36583 C163.902564,6524.77071 163.902564,6525.42619 164.292308,6525.83004 L172.555873,6534.39267 C173.33636,6535.20244 174.602528,6535.20244 175.383014,6534.39267 L183.70754,6525.76791 C184.093286,6525.36716 184.098283,6524.71997 183.717533,6524.31405 C183.328789,6523.89985 182.68821,6523.89467 182.29347,6524.30266 L174.676479,6532.19636 C174.285736,6532.60124 173.653152,6532.60124 173.262409,6532.19636 L165.705379,6524.36583 C165.315635,6523.96094 164.683051,6523.96094 164.292308,6524.36583" id="arrow_down-[#ffffff]"> </path> </g> </g> </g> </g></svg>
+                </div> `
+            }
                 <div class="flex items-center gap-1.5 mb-0.5 text-[10px] text-slate-400 select-none">
                     ${msg.forwarded ? '<span class="text-[9px] text-brand-300 font-semibold"><i class="fa-solid fa-share text-[8px]"></i> Forwarded</span> • ' : ''}
                     <span>${formattedTime}</span>
@@ -2375,7 +2457,7 @@
                 <div class="w-full p-3 rounded text-xs sm:text-sm ${isMe ? 'bg-brand-600 text-white rounded-br-none' : 'bg-slate-800 text-slate-100 rounded-bl-none'} shadow-md">
                     ${replyHTML}
                     ${attachmentHTML}
-                    <div class="msg-text-content">${msg.text ? escapeHTML(msg.text) : ''}</div>
+                    <div class="msg-text-content"> ${ msg.deleted ? '<span class="italic opacity-60"><i class="fa-solid fa-ban mr-1"></i>Message deleted</span>': msg.text ? escapeHTML(msg.text) : ''}</div>
                     <div class="reactions-wrapper">${reactionsHTML}</div>
                 </div>
             `;
@@ -2412,7 +2494,7 @@
         
             wrap.addEventListener('dblclick', () =>
             {
-                if (msg.reply_to)
+                if (msg.reply_to && !msg.deleted)
                 {
                     triggerReply(msg.reply_to);
                 }
@@ -2454,7 +2536,6 @@
                 });
             }
         
-            msgRow.appendChild(avatarContainer);
             msgRow.appendChild(wrap);
         
             outerContainer.appendChild(swipeIndicator);
@@ -2823,22 +2904,14 @@
                         </div>
                     `;
         
-                } else if (latest.type === "image") {
+                } else if (latest.type) {
         
                     content = `
                         <img src="${latest.media}"
                              class="w-full h-full rounded-full object-cover">
                     `;
         
-                } else {
-        
-                    content = `
-                        <video src="${latest.media}"
-                               muted
-                               class="w-full h-full rounded-full object-cover">
-                        </video>
-                    `;
-                }
+                } 
         
                 container.innerHTML += `
                     <div class="flex items-center gap-3 p-3 hover:bg-slate-800 cursor-pointer"
@@ -3075,7 +3148,7 @@
         <div class="w-full h-full flex items-center justify-center bg-black">
             <video
                 id="status-video"
-                src="${status.media}"
+                src="${status.video}"
                 autoplay
                 muted
                 playsinline
@@ -3187,48 +3260,92 @@
             return new Date(timestamp)
                 .toLocaleDateString();
         }
-        
-        function pickStatusMedia(type, capture)
-        {
-        
+        function pickStatusMedia(type, capture) {
             closeCreateStatus();
         
             const input = document.createElement("input");
             input.type = "file";
             input.accept = type === "image" ? "image/*" : "video/*";
         
-            
-            capture ? input.capture = "environment" : ''
+            if (capture) input.capture = "environment";
         
-            input.onchange = () =>
-            {
+            input.onchange = async () => {
                 const file = input.files[0];
                 if (!file) return;
+        
                 if (file.size > 5 * 1024 * 1024) {
-                    showToast('Maximum Status Upload size : 5 MB')
-                    return
+                    showToast("Maximum Status Upload size: 5 MB");
+                    return;
+                }
+        
+                let thumbnail = null;
+        
+                if (type === "video") {
+                    try {
+                        thumbnail = await createVideoThumbnail(file);
+                    } catch (err) {
+                        console.error("Thumbnail error:", err);
+                        showToast("Could not create video preview.");
+                        return;
+                    }
+                }
+        
+                const formData = new FormData();
+                formData.append("media", file);
+                formData.append("type", type);
+        
+                if (thumbnail) {
+                    formData.append("thumbnail", thumbnail, "thumbnail.jpg");
+                }
+        
+                const xhr = new XMLHttpRequest();
+        
+                xhr.open("POST", "/uploadStatusMedia", true);
+        
+                xhr.upload.onprogress = e => {
+                    if (!e.lengthComputable) return;
+        
+                    const percent = Math.round(e.loaded / e.total * 100);
+                    console.log(`Status upload: ${percent}%`);
+        
+                    const progress = document.getElementById("status-upload-progress");
+                    if (progress) progress.textContent = `${percent}%`;
                 };
-
         
-                const reader = new FileReader();
+                xhr.onload = () => {
+                    if (xhr.status < 200 || xhr.status >= 300) {
+                        console.error(xhr.responseText);
+                        showToast("Upload failed.");
+                        return;
+                    }
         
-                reader.onload = () =>
-                {
-                    socket.emit("postStatus",
-                    {
-                        type,
-                        media: reader.result
-                    });
+                    try {
+                        const result = JSON.parse(xhr.responseText);
         
-                    showToast("Status posted.");
+                        if (!result.url) {
+                            showToast("Upload failed.");
+                            return;
+                        }
+        
+                        socket.emit("postStatus", {
+                            type,
+                            media: result.url,
+                            thumbnail: result.thumbnail || null
+                        });
+        
+                        showToast("Status posted.");
+                    } catch (err) {
+                        console.error(err);
+                        showToast("Invalid upload response.");
+                    }
                 };
         
-                reader.readAsDataURL(file);
+                xhr.onerror = () => showToast("Upload failed.");
+                xhr.send(formData);
             };
         
             input.click();
         }
-        
         function nextStatus()
         {
         
@@ -3314,7 +3431,7 @@
                 ? viewers.map(v => `
                     <div class="flex items-center gap-3 p-3">
                         <div class="w-10 h-10 rounded-full bg-brand-600 flex items-center justify-center text-white font-bold">
-                            ${v.username.charAt(0).toUpperCase()}
+                            ${v.dp ? `<img src="${v.dp}">` : v.username.charAt(0).toUpperCase()}
                         </div>
         
                         <div class="flex-1">
@@ -3441,7 +3558,7 @@
 
                 callTimeoutTimer = true;
 
-                CALL_TIMEOUT_MS = 30000;
+                CALL_TIMEOUT_MS = 25000;
 
                 
 
@@ -3456,6 +3573,8 @@
 
                         stopDialtone();
                         endActiveCall();
+                        console.log(activeCallId)
+                        socket.emit('missedCall', activeCallId)
                         showToast("No answer.", "error");
                     }
                 }, 1000);
@@ -3481,6 +3600,8 @@
                 .classList.remove('hidden');
 
             document.getElementById('end-call-btn').setAttribute('onclick', `endActiveCall('${incomingCallData.callId}')`) 
+
+            activeCallTId = incomingCallData.callId
 
             activeCallTargetUserId = incomingCallData.fromUserId;
 
@@ -3577,7 +3698,6 @@
         {
             stopDialtone();
 
-            console.log(callId)
 
             if (callTimeoutTimer) {
                 clearTimeout(callTimeoutTimer);
@@ -3655,94 +3775,245 @@
                 }
             }
         }
+
+        let selectedCallIds = new Set();
+        let callSelectMode = false;
         
-        function renderOnlineUsers()
-        {
+        function renderCallHistory(){
+            const list=document.getElementById('recent-calls-list');
+            if(!list)return;
+        
+            list.innerHTML=`
+                <div class="flex items-center justify-between px-1 mb-2">
+                    <button onclick="toggleCallSelectMode()" class="text-xs text-slate-400 hover:text-white">
+                        ${callSelectMode?'Cancel':'Select'}
+                    </button>
+                    ${callSelectMode?`
+                        <div class="flex gap-2">
+                            <button onclick="selectAllCalls()" class="text-xs text-slate-400 hover:text-white">
+                                ${selectedCallIds.size===calls.length?'Deselect all':'Select all'}
+                            </button>
+                            <button onclick="deleteSelectedCalls()" class="text-xs text-red-400 ${selectedCallIds.size?'':'opacity-40 pointer-events-none'}">
+                                Delete${selectedCallIds.size?` (${selectedCallIds.size})`:''}
+                            </button>
+                        </div>`:''
+                    }
+                </div>
+            `;
+        
+            if(!calls?.length){
+                list.innerHTML+=`
+                    <div class="text-xs text-slate-500 p-4 text-center italic">
+                        No calls yet
+                    </div>
+                `;
+                return;
+            }
+        
+            calls.forEach(call=>{
+                const otherId=call.caller_id===myUserId?call.receiver_id:call.caller_id;
+                const user=allUsers.find(u=>u.id===otherId);
+                if(!user)return;
+        
+                const outgoing=call.caller_id===myUserId;
+                const selected=selectedCallIds.has(call.id);
+                const icon=call.call_type==='video'?'fa-video':'fa-phone';
+        
+                let label=outgoing?'Outgoing':'Incoming';
+                let color='text-slate-500';
+        
+                if(call.status==='missed' && call.caller_id !== myUserId){
+                    label='Missed call';
+                    color='text-red-400';
+                }else if(['rejected','declined'].includes(call.status)){
+                    label='Declined';
+                    color='text-red-400';
+                }else if(call.status==='cancelled'){
+                    label='Cancelled';
+                }
+                else if(call.status==='missed' && call.caller_id == myUserId){
+                    label='No Answer';
+                    color='text-red-300';
+
+                }
+        
+                list.insertAdjacentHTML('beforeend',`
+                    <div class="p-3 rounded bg-slate-900 border ${selected?'border-brand-500 bg-brand-500/10':'border-slate-800'} flex items-center justify-between mb-1">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                            ${callSelectMode?`
+                                <input type="checkbox"
+                                    ${selected?'checked':''}
+                                    onchange="toggleCallSelection(${call.id})"
+                                    class="accent-brand-500">
+                            `:''}
+        
+                            <div class="w-8 h-8 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-xs font-bold overflow-hidden shrink-0">
+                                ${user.dp
+                                    ? `<img src="${user.dp}" class="w-full h-full object-cover">`
+                                    : escapeHTML(user.name.charAt(0).toUpperCase())
+                                }
+                            </div>
+        
+                            <div class="min-w-0">
+                                <div class="text-xs font-semibold text-slate-200 truncate">
+                                    ${escapeHTML(user.name)}
+                                </div>
+        
+                                <div class="text-[10px] ${color} flex items-center gap-1">
+                                    <i class="fa-solid ${icon}"></i>
+                                    ${label}
+                                    ${call.duration?` • ${call.duration}s`:''}
+                                </div>
+                            </div>
+                        </div>
+        
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            <span class="text-[10px] text-slate-600">
+                                ${formatMessageTime(call.ended_at||call.started_at)}
+                            </span>
+        
+                            ${!callSelectMode?`
+                                <button onclick="initiateCall('${user.id}','audio')"
+                                    class="p-2 bg-slate-800 hover:bg-emerald-600 text-slate-300 hover:text-white rounded-xl text-xs">
+                                    <i class="fa-solid fa-phone"></i>
+                                </button>
+        
+                                <button onclick="initiateCall('${user.id}','video')"
+                                    class="p-2 bg-slate-800 hover:bg-brand-600 text-slate-300 hover:text-white rounded-xl text-xs">
+                                    <i class="fa-solid fa-video"></i>
+                                </button>
+        
+
+                            `:''}
+                        </div>
+                    </div>
+                `);
+            });
+        }
+
+
+        
+        function toggleCallSelectMode() {
+            callSelectMode = !callSelectMode;
+        
+            if (!callSelectMode) {
+                selectedCallIds.clear();
+            }
+        
+            renderCallHistory();
+        }
+        
+        function toggleCallSelection(callId) {
+            if (selectedCallIds.has(callId)) {
+                selectedCallIds.delete(callId);
+            } else {
+                selectedCallIds.add(callId);
+            }
+        
+            renderCallHistory();
+        }
+        
+        function deleteSelectedCalls() {
+            if (!selectedCallIds.size) return;
+        
+            socket.emit('deleteCallLogs', {
+                callIds: [...selectedCallIds]
+            });
+        }
+        function renderOnlineUsers() {
             const list = document.getElementById('online-users-list');
-            const callsList = document.getElementById('recent-calls-list');
+        
             list.innerHTML = '';
-            if (callsList) callsList.innerHTML = '';
+            
         
             const availablePeers = allUsers.filter(u => u.id !== myUserId);
         
-            if (availablePeers.length === 0)
-            {
+            if (!availablePeers.length) {
                 list.innerHTML = `<div class="text-xs text-slate-500 p-4 text-center italic">No other peers online</div>`;
                 if (callsList) callsList.innerHTML = `<div class="text-xs text-slate-500 p-3 text-center italic">No active targets found</div>`;
                 return;
             }
         
-            availablePeers.sort((a, b) =>
-            {
-                const timeA = lastMessageTimestampMap[a.id] || 0;
-                const timeB = lastMessageTimestampMap[b.id] || 0;
-                if (timeA !== timeB)
-                {
-                    return timeB - timeA;
-                }
-                const onlineA = onlineUsers.some(u => u.id === a.id) ? 1 : 0;
-                const onlineB = onlineUsers.some(u => u.id === b.id) ? 1 : 0;
+            availablePeers.sort((a, b) => {
+                const timeA = lastMessagesMap[a.id]?.at || 0;
+                const timeB = lastMessagesMap[b.id]?.at || 0;
+        
+                if (timeA !== timeB) return timeB - timeA;
+        
+                const onlineA = onlineUsers.some(u => u.id === a.id);
+                const onlineB = onlineUsers.some(u => u.id === b.id);
+        
                 if (onlineA !== onlineB) return onlineB - onlineA;
+        
                 return a.name.localeCompare(b.name);
             });
+
         
-            availablePeers.forEach(user =>
-            {
+            availablePeers.forEach(user => {
                 const isOnline = onlineUsers.some(u => u.id === user.id);
                 const unread = unreadUsers[user.id] || 0;
                 const isSelected = user.id === activeTargetUserId;
-                const lastMsgText = lastMessagesMap[user.id] ? lastMessagesMap[user.id].msg : '';
+                const last = lastMessagesMap[user.id];
+                const lastMsgText = last?.msg || '';
 
+        
+                const isFile = /^fa[bs] fa-/.test(lastMsgText);
+        
+                const preview = isFile
+                    ? `<i class="${escapeHTML(lastMsgText)} text-sm"></i><span class="text-blue-500"> ${escapeHTML(last?.filename || 'Attachment')}</span>`
+                    : escapeHTML(lastMsgText);
+        
+                const isRead = last?.by === myUserId &&
+                    (last?.read_by || '[]').some(u => u.userId === last.to);
         
                 const item = document.createElement('div');
-                item.className =
-                    `p-3 rounded flex items-center justify-between cursor-pointer transition border-b border-slate-800/90 ${isSelected ? 'bg-brand-600/20 ' : 'hover:bg-slate-800/60'}`;
+        
+                item.className = `p-3 rounded flex items-center justify-between cursor-pointer transition border-b border-slate-800/90 ${isSelected ? 'bg-brand-600/20' : 'hover:bg-slate-800/60'}`;
+        
                 item.onclick = () => selectUserForChat(user.id);
-
-                item.title = `${String(lastMsgText).startsWith('fas fa-') || String(lastMsgText).startsWith('fab fa-') ?  `📎 ${lastMessagesMap[user.id].filename}` : lastMsgText}`
+        
+                item.title = isFile
+                    ? `📎 ${last?.filename || 'Attachment'}`
+                    : lastMsgText.length > 50 ? String(lastMsgText).slice(0, 50) + '...' : lastMsgText;
         
                 item.innerHTML = `
-                    <div class="flex items-center overflow-hidden">
+                    <div class="flex items-center overflow-hidden" style="width:stretch">
                         <div class="relative shrink-0">
-                            <div class="w-9 h-9 rounded-full bg-slate-800 border border-slate-700 text-slate-200 font-bold flex items-center justify-center text-xs">${
-                               user.dp ? `<img style="border-radius:50%;" src="${user.dp}">` : user.name.charAt(0).toUpperCase()}
+                            <div class="w-9 h-9 rounded-full bg-slate-800 border border-slate-700 text-slate-200 font-bold flex items-center justify-center text-xs">
+                                ${user.dp
+                                    ? `<img style="width:100%;height:100%;border-radius:50%;" src="${user.dp}">`
+                                    : user.name.charAt(0).toUpperCase()}
                             </div>
+        
                             <span class="w-2.5 h-2.5 rounded-full absolute -bottom-0.5 -right-0.5 border-2 border-slate-900 ${isOnline ? 'bg-emerald-400' : 'bg-slate-500'}"></span>
                         </div>
-                        <div class="truncate" style="margin-left:10px; pointer-events:none">
-                            <span class="text-xs font-semibold block truncate ${isSelected ? 'text-brand-300' : 'text-slate-200'}">${escapeHTML(user.name)}</span>
-                            <span class="text-[10px] text-slate-400 block truncate">${String(lastMsgText).startsWith('fas fa-') || String(lastMsgText).startsWith('fab fa-') ?  `<i class="${escapeHTML(lastMsgText)} text-sm"></i><span class="text-blue-500"> ${lastMessagesMap[user.id].filename}</span>` : escapeHTML(lastMsgText)} </span>
+        
+                        <div class="message-info flex justify-between" style="flex-grow:1; max-width:85%">
+                            <div class="truncate  w-[75%]" style="margin-left:10px;pointer-events:none; max-width:75%">
+                                <span class="text-xs font-semibold block truncate ${isSelected ? 'text-brand-300' : 'text-slate-200'}">${escapeHTML(user.name)}</span>
+                                <span class="text-[10px] text-slate-400 block  truncate">${preview}</span>
+                            </div>
+        
+                            <div class="message-meta flex flex-col items-end shrink-0 ml-2">
+                                <div class="message-time text-xs text-slate-600">
+                                    ${last ? formatMessageTime(last.at) : ''}
+                                </div>
+        
+                                ${last?.by === myUserId
+                                    ? `<div class="message-stats text-xs ${isRead ? 'text-green-400' : ''}">${isRead ? '<svg width="15px" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" fill="none"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path stroke="#4d9aff" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 17l5 5 12-12M16 20l2 2 12-12"></path> </g></svg>' : '<svg  width="15px"  viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" fill="none"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path stroke="#dedede" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6.5 17l6 6 13-13"></path> </g></svg>'}</div>`
+                                    : ''}
+                            </div>
                         </div>
                     </div>
-                    ${unread > 0 ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand-500 text-white shadow-lg shadow-brand-500/20 shrink-0">${unread}</span>` : ''}
-                `;
-                list.appendChild(item);
         
-                if (callsList)
-                {
-                    const callItem = document.createElement('div');
-                    callItem.className = 'p-3 rounded bg-slate-900 border border-slate-800 flex items-center justify-between';
-                    callItem.innerHTML = `
-                        <div class="flex items-center gap-2.5"> ${isOnline ? '<div class="bg-green-600 " style="border-radius:50%; width:5px; height:5px;"></div>' : '<div class="bg-red-500 " style="border-radius:50%; width:5px; height:5px;"></div>'}
-                            <div class="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-xs font-bold">
-                                ${user.name.charAt(0).toUpperCase()}
-                            </div>
-                            <span class="text-xs font-semibold text-slate-200">${escapeHTML(user.name)}</span>
-                        </div>
-                        <div class="flex items-center gap-1.5">
-                            <button onclick="initiateCall('${user.id}', 'audio')" class="p-2 bg-slate-800 hover:bg-emerald-600 text-slate-300 hover:text-white rounded-xl text-xs transition">
-                                <i class="fa-solid fa-phone"></i>
-                            </button>
-                            <button onclick="initiateCall('${user.id}', 'video')" class="p-2 bg-slate-800 hover:bg-brand-600 text-slate-300 hover:text-white rounded-xl text-xs transition">
-                                <i class="fa-solid fa-video"></i>
-                            </button>
-                        </div>
-                    `;
-                    callsList.appendChild(callItem);
-                }
+                    ${unread > 0
+                        ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand-500 text-white shadow-lg shadow-brand-500/20 shrink-0">${unread}</span>`
+                        : ''}
+                `;
+        
+                list.appendChild(item);
             });
         }
-        
         function filterPeersList()
         {
             const query = document.getElementById('peer-search-input')
@@ -3875,7 +4146,6 @@
 
             reader.onload = (evt) => {
                 myDp = evt.target.result;
-                console.log(myDp)
 
                 const largedp = document.getElementById("large-dp-image");
  
@@ -4012,6 +4282,59 @@
             }
         }
         
+
+        async function createVideoThumbnail(file) {
+            return new Promise((resolve, reject) => {
+                const video = document.createElement("video");
+                const url = URL.createObjectURL(file);
+        
+                video.preload = "metadata";
+                video.muted = true;
+                video.playsInline = true;
+        
+                video.onloadedmetadata = () => {
+                    video.currentTime = Math.min(1, video.duration / 2);
+                };
+        
+                video.onseeked = () => {
+                    const canvas = document.createElement("canvas");
+        
+                    const maxWidth = 640;
+                    const scale = Math.min(1, maxWidth / video.videoWidth);
+        
+                    canvas.width = video.videoWidth * scale;
+                    canvas.height = video.videoHeight * scale;
+        
+                    const ctx = canvas.getContext("2d");
+                    ctx.drawImage(
+                        video,
+                        0,
+                        0,
+                        canvas.width,
+                        canvas.height
+                    );
+        
+                    canvas.toBlob(blob => {
+                        URL.revokeObjectURL(url);
+        
+                        if (!blob) {
+                            reject(new Error("Thumbnail creation failed"));
+                            return;
+                        }
+        
+                        resolve(blob);
+                    }, "image/jpeg", 0.8);
+                };
+        
+                video.onerror = () => {
+                    URL.revokeObjectURL(url);
+                    reject(new Error("Video could not be loaded"));
+                };
+        
+                video.src = url;
+            });
+        }
+
         async function toggleWakeLockManual()
         {
             if ('wakeLock' in navigator)
@@ -4050,6 +4373,10 @@
                 showToast("Wake Lock API not supported on this browser", "error");
             }
         }
+
+        window.deleteCallLog = function(callId) {
+            socket.emit('deleteCallLog', { callId });
+        };
         
         function handleNativeBack() {
         

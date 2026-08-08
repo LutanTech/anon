@@ -1,0 +1,6 @@
+<svg viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" id="Caret-Down--Streamline-Radix">
+  <desc>
+    Caret Down Streamline Icon: https://streamlinehq.com
+  </desc>
+  <path fill-rule="evenodd" clip-rule="evenodd" d="M4.18179 6.18181c0.17574 -0.17573 0.46066 -0.17573 0.6364 0l2.6818 2.68181 2.68181 -2.68181c0.1757 -0.17573 0.4606 -0.17573 0.6364 0 0.1757 0.17574 0.1757 0.46066 0 0.6364l-3.00001 3c-0.0844 0.08439 -0.19885 0.1318 -0.3182 0.1318 -0.11935 0 -0.23381 -0.04741 -0.3182 -0.1318l-3 -3c-0.17574 -0.17574 -0.17574 -0.46066 0 -0.6364Z" fill="currentColor" stroke-width="1"></path>
+</svg>

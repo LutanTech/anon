@@ -1,18 +1,96 @@
-[2026-08-07T22:41:11.392Z] [SERVER] ====================================================
-[2026-08-07T22:41:11.393Z] [SERVER] SERVER STARTUP INITIATED
-[2026-08-07T22:41:11.393Z] [SERVER] ====================================================
-[2026-08-07T22:41:11.395Z] [SERVER] [FCM DEBUG] Looking for Firebase service account file at: "D:\\PYTHON\\AnonChat 2\\public\\firebase-admin.json"
-[2026-08-07T22:41:11.476Z] [SERVER] [FCM SUCCESS] Firebase Admin SDK successfully initialized {"projectId":"goal-getter-fk4sa","clientEmail":"firebase-adminsdk-fbsvc@goal-getter-fk4sa.iam.gserviceaccount.com"}
-[2026-08-07T22:41:11.497Z] [SERVER] [SERVER] Node server successfully started and listening on 0.0.0.0:8000
-[2026-08-07T22:41:11.499Z] [SERVER] Connected to SQLite database at D:\PYTHON\AnonChat 2\chat.db
-[2026-08-07T22:41:11.512Z] [SERVER] Database schema verified successfully
-[2026-08-07T22:41:14.488Z] [SERVER] [SERVER] Client socket connected {"sid":"toeHAdM7O8J26QjhAAAN"}
-[2026-08-07T22:41:14.509Z] [SERVER] [PROCESS WARN] Unhandled Rejection: "The client is closed"
-[2026-08-07T22:41:14.509Z] [SERVER] [PROCESS WARN] Unhandled Rejection: "The client is closed"
-[2026-08-07T22:41:14.509Z] [SERVER] [PROCESS WARN] Unhandled Rejection: "The client is closed"
-[2026-08-07T22:41:14.509Z] [SERVER] [PROCESS WARN] Unhandled Rejection: "The client is closed"
-[2026-08-07T22:41:25.698Z] [SERVER] [SERVER] Client socket connected {"sid":"FuVoeKlpUGFz2emHAAAP"}
-[2026-08-07T22:41:25.776Z] [SERVER] [PROCESS WARN] Unhandled Rejection: "The client is closed"
-[2026-08-07T22:41:25.776Z] [SERVER] [PROCESS WARN] Unhandled Rejection: "The client is closed"
-[2026-08-07T22:41:25.776Z] [SERVER] [PROCESS WARN] Unhandled Rejection: "The client is closed"
-[2026-08-07T22:41:25.776Z] [SERVER] [PROCESS WARN] Unhandled Rejection: "The client is closed"
+[2026-08-08T16:27:14.995Z] [SERVER] [SERVER] Client socket connected {"sid":"lAaAUu2TkA5LxXltAAAl"}
+[2026-08-08T16:27:48.303Z] [SERVER] [SERVER] Client socket connected {"sid":"snHO1aHR-M6L8cJ1AAAn"}
+[2026-08-08T16:28:20.993Z] [SERVER] [SERVER] Client socket connected {"sid":"sFkFSJRnoeMw9jUNAAAp"}
+[2026-08-08T16:28:39.235Z] [SERVER] [SERVER] Client socket connected {"sid":"VOjRWKWb9xVy_qRtAAAr"}
+[2026-08-08T16:28:41.351Z] [SERVER] [SERVER] Client socket connected {"sid":"ttZmscCIaakWV-L0AAAt"}
+[2026-08-08T16:28:53.533Z] missed call recorded 61
+[2026-08-08T16:28:54.311Z] [SERVER] [SERVER] Client socket connected {"sid":"qv0fujI9gNRnjAH5AAAv"}
+[2026-08-08T16:29:00.467Z] [SERVER] [SERVER] Client socket connected {"sid":"o1q32HQpYC2SPG-yAAAx"}
+[2026-08-08T16:29:25.985Z] [SERVER] [SERVER] Client socket connected {"sid":"HMnfcdpcv9w_WLPBAAAz"}
+[2026-08-08T16:29:59.287Z] [SERVER] [SERVER] Client socket connected {"sid":"cssIfSalwFmWynBaAAA1"}
+[2026-08-08T16:30:31.987Z] [SERVER] [SERVER] Client socket connected {"sid":"MyuyWuFD3V3WVX7zAAA3"}
+[2026-08-08T16:31:04.314Z] [SERVER] [SERVER] Client socket connected {"sid":"dvm3p1Mmb7K8gVkQAAA5"}
+[2026-08-08T16:31:12.940Z] [SERVER] [SERVER] Client socket connected {"sid":"cNQLPhCCdmb7ZAbcAAA7"}
+[2026-08-08T16:31:16.515Z] [SERVER] [SERVER] Client socket connected {"sid":"jaFnz9Lv8T_JfPFAAAA9"}
+[2026-08-08T16:31:19.095Z] [SERVER] [SERVER] Client socket connected {"sid":"Ft4QJI22ozfUqxpUAAA_"}
+[2026-08-08T16:31:33.335Z] missed call recorded 62
+[2026-08-08T16:31:35.090Z] [SERVER] [SERVER] Client socket connected {"sid":"MeSsJr_S6QLrfnUBAABB"}
+[2026-08-08T16:32:08.286Z] [SERVER] [SERVER] Client socket connected {"sid":"kOs-ZkZvY4b6eGurAABD"}
+[2026-08-08T16:32:39.962Z] [SERVER] [SERVER] Client socket connected {"sid":"13hiHMC0R7_WDUiwAABF"}
+[2026-08-08T16:33:12.335Z] [SERVER] [SERVER] Client socket connected {"sid":"UGihRGWBPqjn3xwWAABH"}
+[2026-08-08T16:33:44.980Z] [SERVER] [SERVER] Client socket connected {"sid":"kt-dm1t9K-KmgvvWAABJ"}
+[2026-08-08T16:34:17.298Z] [SERVER] [SERVER] Client socket connected {"sid":"N94rW8OeGc7aUUW7AABL"}
+[2026-08-08T16:34:49.977Z] [SERVER] [SERVER] Client socket connected {"sid":"VZGoFO0AZQ5dadDBAABN"}
+[2026-08-08T16:35:22.302Z] [SERVER] [SERVER] Client socket connected {"sid":"jLuyymfbDPuvu5YmAABP"}
+[2026-08-08T16:35:46.029Z] [SERVER] [SERVER] Client socket connected {"sid":"r1CexI-UTcIoK2R3AABR"}
+[2026-08-08T16:35:48.002Z] [SERVER] [SERVER] Client socket connected {"sid":"36kNHMHZvGP42PGYAABT"}
+[2026-08-08T16:35:53.727Z] [SERVER] [SERVER] Client socket connected {"sid":"Q087Cl-Lnb0sL2IHAABV"}
+[2026-08-08T16:36:07.808Z] missed call recorded 63
+[2026-08-08T16:36:17.033Z] [SERVER] [SERVER] Client socket connected {"sid":"Xt3MZn_8ZlkeFi0SAABX"}
+[2026-08-08T16:36:25.313Z] [SERVER] [SERVER] Client socket connected {"sid":"VUL8UqVzSWtSEdiAAABZ"}
+[2026-08-08T16:36:37.966Z] [SERVER] [SERVER] Client socket connected {"sid":"XjTe3MQQfixMETkoAABb"}
+[2026-08-08T16:36:40.402Z] [SERVER] [SERVER] Client socket connected {"sid":"Oo2JTXScil1i6KStAABd"}
+[2026-08-08T16:36:58.026Z] [SERVER] [SERVER] Client socket connected {"sid":"HhL14EKOWg0Bxfh1AABf"}
+[2026-08-08T16:37:30.305Z] [SERVER] [SERVER] Client socket connected {"sid":"SGn0bDufg2ImOMvVAABh"}
+[2026-08-08T16:37:54.037Z] missed call recorded 64
+[2026-08-08T16:38:02.014Z] [SERVER] [SERVER] Client socket connected {"sid":"1Ntm49MuXdbAuelGAABj"}
+[2026-08-08T16:38:35.296Z] [SERVER] [SERVER] Client socket connected {"sid":"auigIpEvT-lfXxwoAABl"}
+[2026-08-08T16:38:50.500Z] [SERVER] [SERVER] Client socket connected {"sid":"O6NlEhpLEVDoWA0sAABn"}
+[2026-08-08T16:39:06.953Z] [SERVER] [SERVER] Client socket connected {"sid":"JfLo99V9I4_SxlBEAABp"}
+[2026-08-08T16:39:26.312Z] [SERVER] [SERVER] Client socket connected {"sid":"e0AJZW21T-RaVdf2AABr"}
+[2026-08-08T16:39:38.110Z] [SERVER] [SERVER] Client socket connected {"sid":"ChvSj-zr6mM_tnf9AABt"}
+[2026-08-08T16:40:10.232Z] [SERVER] [SERVER] Client socket connected {"sid":"KUxRyJwJLKr-F3sjAABv"}
+[2026-08-08T16:40:24.301Z] [SERVER] [SERVER] Client socket connected {"sid":"1EJzZ8Lq9nOYKyl-AABx"}
+[2026-08-08T16:40:28.211Z] [SERVER] [SERVER] Client socket connected {"sid":"WWiFLiaqBSN2HDmJAABz"}
+[2026-08-08T16:40:41.947Z] [SERVER] [SERVER] Client socket connected {"sid":"zO-kVR9tbIxt1eygAAB1"}
+[2026-08-08T16:40:56.478Z] [SERVER] [SERVER] Client socket connected {"sid":"xz0Ko6qofcVCaBrzAAB3"}
+[2026-08-08T16:41:13.096Z] [SERVER] [SERVER] Client socket connected {"sid":"ILYopfGGHiMNWM-cAAB5"}
+[2026-08-08T16:41:44.683Z] [SERVER] [SERVER] Client socket connected {"sid":"LmZJf2dvckIcGJkfAAB7"}
+[2026-08-08T16:42:15.848Z] [SERVER] [SERVER] Client socket connected {"sid":"ImuOpJ_xnQiDIhiAAAB9"}
+[2026-08-08T16:42:47.128Z] [SERVER] [SERVER] Client socket connected {"sid":"TSGVBUzO_E3Pbiy6AAB_"}
+[2026-08-08T16:43:18.502Z] [SERVER] [SERVER] Client socket connected {"sid":"bUDHq72YAZpQYXb3AACB"}
+[2026-08-08T16:43:49.994Z] [SERVER] [SERVER] Client socket connected {"sid":"2vmDZ0y9uZ8eZ7ThAACD"}
+[2026-08-08T16:44:11.296Z] [SERVER] [SERVER] Client socket connected {"sid":"Q2-V6v-9jfw7zzviAACF"}
+[2026-08-08T16:44:21.106Z] [SERVER] [SERVER] Client socket connected {"sid":"7m99m6fMQiUsp-dtAACH"}
+[2026-08-08T16:44:33.378Z] [SERVER] [SERVER] Client socket connected {"sid":"xHSa2QfgAA--Y6zCAACJ"}
+[2026-08-08T16:44:52.701Z] [SERVER] [SERVER] Client socket connected {"sid":"LvDCAuIEAFCNNgLkAACL"}
+[2026-08-08T16:45:23.893Z] [SERVER] [SERVER] Client socket connected {"sid":"d6wx8cJKvwGmK7cTAACN"}
+[2026-08-08T16:45:55.737Z] [SERVER] [SERVER] Client socket connected {"sid":"Ap7kP63yogW6TUTOAACP"}
+[2026-08-08T16:46:16.794Z] [SERVER] [SERVER] Client socket connected {"sid":"Il0XL-frv8D12gyEAACR"}
+[2026-08-08T16:46:26.513Z] [SERVER] [SERVER] Client socket connected {"sid":"6KS8-K8BHxKyvN-5AACT"}
+[2026-08-08T16:46:47.843Z] [SERVER] [SERVER] User disconnected finalized "usr_q7xtgp9"
+[2026-08-08T16:46:57.897Z] [SERVER] [SERVER] Client socket connected {"sid":"phFUPJmxrI2IRmNFAACV"}
+[2026-08-08T16:47:28.397Z] [SERVER] [SERVER] Client socket connected {"sid":"BlyzaZ7oTP_89JdYAACX"}
+[2026-08-08T16:47:28.866Z] [SERVER] [SERVER] Client socket connected {"sid":"d9UV4ptw8XzHWbZiAACZ"}
+[2026-08-08T16:47:47.516Z] [SERVER] [SERVER] Client socket connected {"sid":"qlRlUfyJf6FCt2RZAACb"}
+[2026-08-08T16:48:02.289Z] [SERVER] [SERVER] Client socket connected {"sid":"SlKz04nWkqcVDWbJAACd"}
+[2026-08-08T16:48:34.982Z] [SERVER] [SERVER] Client socket connected {"sid":"o-OD0VHsVcehjmCNAACf"}
+[2026-08-08T16:49:07.269Z] [SERVER] [SERVER] Client socket connected {"sid":"ueCsiQK0u9x5_su-AACh"}
+[2026-08-08T16:49:39.969Z] [SERVER] [SERVER] Client socket connected {"sid":"cWNyH5VH36gJpS_EAACj"}
+[2026-08-08T16:50:12.287Z] [SERVER] [SERVER] Client socket connected {"sid":"xepQxG5SI0Xe1BJNAACl"}
+[2026-08-08T16:50:44.983Z] [SERVER] [SERVER] Client socket connected {"sid":"GzEuKuXob1LlIAjBAACn"}
+[2026-08-08T16:51:18.297Z] [SERVER] [SERVER] Client socket connected {"sid":"_yfDq5ihZSsVDScFAACp"}
+[2026-08-08T16:51:50.056Z] [SERVER] [SERVER] Client socket connected {"sid":"AIY4i46Hobi_vsrZAACr"}
+[2026-08-08T16:52:22.969Z] [SERVER] [SERVER] Client socket connected {"sid":"61yq5nkvyjrIAoIPAACt"}
+[2026-08-08T16:52:55.287Z] [SERVER] [SERVER] Client socket connected {"sid":"3SeqqcL8orjjbKr4AACv"}
+[2026-08-08T16:53:27.990Z] [SERVER] [SERVER] Client socket connected {"sid":"EU9naCLe5DrnXUWrAACx"}
+[2026-08-08T16:54:01.293Z] [SERVER] [SERVER] Client socket connected {"sid":"yxovaD-I9PiFnis8AACz"}
+[2026-08-08T16:54:32.991Z] [SERVER] [SERVER] Client socket connected {"sid":"pt0-1tp5moSy-acUAAC1"}
+[2026-08-08T16:55:05.289Z] [SERVER] [SERVER] Client socket connected {"sid":"FapzclSsL1t19QkfAAC3"}
+[2026-08-08T16:55:37.979Z] [SERVER] [SERVER] Client socket connected {"sid":"qgKF6iCVrHqquuAvAAC5"}
+[2026-08-08T16:56:10.296Z] [SERVER] [SERVER] Client socket connected {"sid":"q_roKPZ07MD12PhbAAC7"}
+[2026-08-08T16:56:41.997Z] [SERVER] [SERVER] Client socket connected {"sid":"3L8dPOH-UzkXJ2pjAAC9"}
+[2026-08-08T16:57:15.290Z] [SERVER] [SERVER] Client socket connected {"sid":"vkeU8-FZGdcBhKUrAAC_"}
+[2026-08-08T16:57:46.986Z] [SERVER] [SERVER] Client socket connected {"sid":"dEwHPzUZiIYOlpl9AADB"}
+[2026-08-08T16:58:19.290Z] [SERVER] [SERVER] Client socket connected {"sid":"r6e9glrXLiuTnRFMAADD"}
+[2026-08-08T16:58:50.977Z] [SERVER] [SERVER] Client socket connected {"sid":"g7sCTsb2vC-b9klXAADF"}
+[2026-08-08T16:59:24.280Z] [SERVER] [SERVER] Client socket connected {"sid":"eRZ62p6vIRfQrmyvAADH"}
+[2026-08-08T16:59:56.969Z] [SERVER] [SERVER] Client socket connected {"sid":"7LssV7HjYc53tHwYAADJ"}
+[2026-08-08T17:00:29.308Z] [SERVER] [SERVER] Client socket connected {"sid":"jI8bMuHx4NdLQRq9AADL"}
+[2026-08-08T17:01:01.990Z] [SERVER] [SERVER] Client socket connected {"sid":"93C18nNx2a9NCfgwAADN"}
+[2026-08-08T17:01:35.292Z] [SERVER] [SERVER] Client socket connected {"sid":"RAihCEvJrsM3xDr2AADP"}
+[2026-08-08T17:02:06.976Z] [SERVER] [SERVER] Client socket connected {"sid":"TRCmwiB-cxxCowNhAADR"}
+[2026-08-08T17:02:40.296Z] [SERVER] [SERVER] Client socket connected {"sid":"j7Khz45T6Q5MJ15SAADT"}
+[2026-08-08T17:03:12.979Z] [SERVER] [SERVER] Client socket connected {"sid":"CxA_7Z7KuVCjsOA2AADV"}
+[2026-08-08T17:03:44.671Z] [SERVER] [SERVER] Client socket connected {"sid":"6wphpwuwGLwy1nXnAADX"}
+[2026-08-08T17:04:16.037Z] [SERVER] [SERVER] Client socket connected {"sid":"-XCXzDV3FUXrEbVVAADZ"}
