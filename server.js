@@ -10,10 +10,10 @@ const sqlite3 = require('sqlite3')
 const multer = require('multer');
 
 const cache = {
-	users: new Map(), // userId -> formatted user object
-	messages: new Map(), // msgId -> formatted message object
-	pinned: new Map(), // chatKey -> pinned object or null
-	lastMessages: new Map(), // chatKey -> { to, msg, filename }
+	users: new Map(), 
+	messages: new Map(),
+	pinned: new Map(), 
+	lastMessages: new Map(), 
 	statuses: new Map(),
 	histories: new Map(),
 	calls: null
@@ -52,7 +52,6 @@ function log(message, data = null) {
 	logStream.write(line + '\n');
 }
 
-// Redirect console output exclusively to server.log
 console.log = (...args) => {
 	const timestamp = new Date()
 		.toISOString();
@@ -148,7 +147,6 @@ function dbAll(sql, params = []) {
 	});
 }
 
-// Ensure database tables exist
 (async () => {
 	try {
 		await dbRun(`
@@ -208,10 +206,19 @@ function dbAll(sql, params = []) {
         file TEXT,
         file_name TEXT,
         file_type TEXT,
-        file_size TEXT
-        deleted INTEGER DEFAULT 0;
+        file_size TEXT,
+        deleted INTEGER DEFAULT 0
       )
     `);
+
+	await dbRun(`
+		INSERT OR IGNORE INTO users
+		(id,name)
+		VALUES (?,?)
+	  `,[
+		'admin',
+		'Admin'
+	  ]);
 		
 		await dbRun(`
       CREATE TABLE IF NOT EXISTS pinned_messages (
@@ -649,6 +656,10 @@ app.get('/', (req, res) => {
 		.send('index.html not found in public directory');
 });
 
+app.get("/admin", (req,res)=>{
+    res.sendFile(path.join(PUBLIC_DIR,"admin.html"));
+});
+
 app.use('/statuses', express.static(path.join(PUBLIC_DIR, 'statuses')));
 
 app.get('/health', async (req, res) => {
@@ -850,61 +861,81 @@ io.on('connection', (socket) => {
 });
 
 	
-	socket.on("loadStatuses", async () => {
+socket.on("loadStatuses", async () =>
+	{
 		const userId = sidToUserId.get(socket.id);
-		if (!userId) return;
-		
+	
+		if (!userId)
+			return;
+	
 		const now = Date.now();
 		const grouped = {};
-		
-		for (const status of cache.statuses.values()) {
-			
-			if (status.expires_at <= now) {
+	
+		for (const status of cache.statuses.values())
+		{
+			if (status.expires_at <= now)
 				continue;
-			}
-			
-			if (!grouped[status.user_id]) {
+	
+			if (!grouped[status.user_id])
+			{
 				grouped[status.user_id] = {
 					userId: status.user_id,
 					username: status.name,
 					statuses: []
 				};
 			}
-			
+	
 			let views = [];
-			
-			try {
-				views = JSON.parse(status.views || "[]");
-			} catch {
+	
+			try
+			{
+				views = Array.isArray(status.views)
+					? status.views
+					: JSON.parse(status.views || "[]");
+			}
+			catch
+			{
 				views = [];
 			}
-			
+	
 			grouped[status.user_id].statuses.push({
 				id: status.id,
 				user_id: status.user_id,
 				username: status.name,
 				type: status.type,
 				content: status.content,
-				media: status.type === "video" ? status.thumbnail : status.media,
-				video: status.type === "video" ? status.media : null,
+	
+				media: status.type === "video"
+					? status.thumbnail
+					: status.media,
+	
+				video: status.type === "video"
+					? status.media
+					: null,
+	
 				background: status.background,
 				createdAt: status.created_at,
 				expiresAt: status.expires_at,
+	
 				views,
-				viewed: views.some(v => v.userId === userId) || status.user_id == userId
+	
+				viewed:
+					status.user_id === userId ||
+					views.some(v => v.userId === userId)
 			});
 		}
-		
+	
 		const groups = Object.values(grouped);
-		
-		groups.sort((a, b) => {
+	
+		groups.sort((a, b) =>
+		{
 			if (a.userId === userId) return -1;
 			if (b.userId === userId) return 1;
-			
+	
 			return b.statuses[0].createdAt -
-				a.statuses[0].createdAt;
+				   a.statuses[0].createdAt;
 		});
-		
+	
 		socket.emit("statusesLoaded", groups);
 	});
 	
@@ -1179,6 +1210,12 @@ io.on('connection', (socket) => {
 	socket.on("postStatus", async (data = {}) => {
 		const userId = sidToUserId.get(socket.id);
 		if (!userId) return;
+
+
+		const user = await dbGet(
+			"SELECT * FROM users WHERE id=?",
+      [userId]
+		);
 		
 		const created = Date.now();
 		const expires = created + 24 * 60 * 60 * 1000;
@@ -1208,7 +1245,8 @@ io.on('connection', (socket) => {
 			background: data.background || "#111827",
 			created_at: created,
 			expires_at: expires,
-			views: "[]"
+			views: "[]",
+			name: user.name
 		};
 		
 		cache.statuses.set(status.id, status);
@@ -1216,49 +1254,84 @@ io.on('connection', (socket) => {
 		io.emit("statusUpdated");
 	});
 	
-	socket.on("viewStatus", async ({
-		statusId
-	}) => {
-		const userId = sidToUserId.get(socket.id);
-		if (!userId) return;
+	socket.on("viewStatus", async ({ statusId }) =>
+		{
+			const userId = sidToUserId.get(socket.id);
 		
-		const status = cache.statuses.get(statusId);
-		if (!status) return;
+			if (!userId || !statusId)
+				return;
 		
-		const user = await getCachedUser(userId);
-		if (!user) return;
+			const status = cache.statuses.get(Number(statusId)) ||
+						   cache.statuses.get(statusId);
 		
-		const views = Array.isArray(status.views) ?
-			status.views :
-			JSON.parse(status.views || "[]");
+			if (!status)
+				return;
 		
-		if (views.some(v => v.userId === userId)) return;
+			const user = await getCachedUser(userId);
 		
-		const viewedAt = Date.now();
+			if (!user)
+				return;
 		
-		const viewer = {
-			userId,
-			name: user.name,
-			viewedAt,
-			statusId: status.id
-		};
+			let views = [];
 		
-		views.push(viewer);
-		status.views = views;
+			try
+			{
+				views = Array.isArray(status.views)
+					? status.views
+					: JSON.parse(status.views || "[]");
+			}
+			catch
+			{
+				views = [];
+			}
 		
-		cache.statuses.set(statusId, status);
+			if (views.some(v => v.userId === userId))
+				return;
 		
-		await dbRun(
-			"UPDATE statuses SET views=? WHERE id=?",
-      [JSON.stringify(views), statusId]
-		);
+			const viewer = {
+				userId,
+				name: user.name,
+				viewedAt: Date.now(),
+				statusId: status.id
+			};
 		
-		io.to(status.user_id)
-			.emit("statusViewed", {
-				statusId,
+			views.push(viewer);
+		
+			/*
+			 * UPDATE THE ACTUAL CACHE OBJECT
+			 */
+		
+			status.views = views;
+		
+			cache.statuses.set(status.id, status);
+		
+			console.log(
+				"[STATUS VIEW] Cached:",
+				status.id,
+				status.views
+			);
+		
+			/*
+			 * DATABASE
+			 */
+		
+			await dbRun(
+				"UPDATE statuses SET views=? WHERE id=?",
+				[
+					JSON.stringify(status.views),
+					status.id
+				]
+			);
+		
+			/*
+			 * Tell status owner
+			 */
+		
+			io.to(status.user_id).emit("statusViewed", {
+				statusId: status.id,
 				viewer
 			});
-	});
+		});
 	
 	socket.on("deleteStatus", async ({
 		statusId
@@ -1286,6 +1359,9 @@ io.on('connection', (socket) => {
 		}
 		
 		await dbRun("DELETE FROM statuses WHERE id=?", [statusId]);
+	    cache.statuses.delete(statusId);
+		console.log('deleted', statusId)
+
 		io.emit("statusUpdated");
 	});
 	
@@ -1303,9 +1379,10 @@ io.on('connection', (socket) => {
 		socket.emit("userStatuses", rows);
 	});
 	
-	socket.on("getStatusViews", async ({
-		statusId
-	}) => {
+	socket.on("getStatusViews", async (data = {}) => {
+		
+		const statusId = data ? data.statusId : null
+
 		const userId = sidToUserId.get(socket.id);
 		
 		const row = await dbGet(
@@ -1329,8 +1406,14 @@ io.on('connection', (socket) => {
 			});
 		}
 		
+		
 		viewers.sort((a, b) => b.viewedAt - a.viewedAt);
-		socket.emit("statusViews", viewers);
+		
+		var payload = {
+			viewers,
+			show: data.show
+		}
+		socket.emit("statusViews", payload);
 	});
 	
   socket.on('editMessage',async(data={})=>{
@@ -1522,63 +1605,73 @@ socket.on('togglePinMessage',async(data={})=>{
 			.emit('messageUpdated', payload);
 	});
 	
-	socket.on('deleteMessage', async (data = {}) => {
-		const userId = sidToUserId.get(socket.id);
-		if (!userId) return;
-		
-		const msg = await getCachedMessage(data.msgId);
-		if (!msg || msg.user_id !== userId) return;
-		
+	socket.on('deleteMessage',async(data={})=>{
+		const userId=sidToUserId.get(socket.id);
+		if(!userId)return;
+	
+		const msg=await getCachedMessage(data.msgId);
+		if(!msg||msg.user_id!==userId)return;
+	
 		await dbTransaction([
 			{
-				sql: 'DELETE FROM pinned_messages WHERE chat_key = ? AND message_id = ?',
-				params: [msg.chat_key, msg.id]
-        },
+				sql:'DELETE FROM pinned_messages WHERE chat_key=? AND message_id=?',
+				params:[msg.chat_key,msg.id]
+			},
 			{
-				sql: `UPDATE messages
-                  SET deleted = 1,
-                      text = '',
-                      file = NULL,
-                      file_name = NULL
-                  WHERE id = ?`,
-				params: [msg.id]
-        }
-    ]);
-		
-		msg.deleted = 1;
-		msg.text = '';
-		msg.file = null;
-		msg.file_name = null;
-		
+				sql:`UPDATE messages
+					 SET deleted=1,
+						 text='',
+						 file=NULL,
+						 file_name=NULL
+					 WHERE id=?`,
+				params:[msg.id]
+			}
+		]);
+	
+		msg.deleted=1;
+		msg.text='';
+		msg.file=null;
+		msg.file_name=null;
+	
 		setCachedMessage(msg);
-		
-		const history = cache.histories.get(msg.chat_key);
-		
-		if (history) {
-			const cached = history.find(m => m.id === msg.id);
-			
-			if (cached) {
-				cached.deleted = 1;
-				cached.text = '';
-				cached.file = null;
-				cached.file_name = null;
+	
+		const history=cache.histories.get(msg.chat_key);
+	
+		if(history){
+			const cached=history.find(m=>m.id===msg.id);
+	
+			if(cached){
+				cached.deleted=1;
+				cached.text='';
+				cached.file=null;
+				cached.file_name=null;
 			}
 		}
-		
-		invalidatePinnedCache(msg.chat_key);
-		
-		socket.emit('messageDeleted', {
-			targetUserId: msg.target_user_id,
-			msgId: msg.id
-		});
-		
-		io.to(msg.target_user_id)
-			.emit('messageDeleted', {
-				targetUserId: userId,
-				msgId: msg.id
-			});
-	});
 	
+		const last=cache.lastMessages.get(msg.chat_key);
+	
+		if(last?.id===msg.id){
+			cache.lastMessages.delete(msg.chat_key);
+		}
+	
+		invalidatePinnedCache(msg.chat_key);
+	
+		const payload={
+			targetUserId:msg.target_user_id,
+			msgId:msg.id
+		};
+	
+		socket.emit('messageDeleted',payload);
+	
+		io.to(msg.target_user_id).emit('messageDeleted',{
+			targetUserId:userId,
+			msgId:msg.id
+		});
+	
+		socket.emit('lastMessagesUpdated');
+		io.to(msg.target_user_id).emit('lastMessagesUpdated');
+	});
+
 	socket.on('forwardMessage', async (data = {}) => {
 		const userId = sidToUserId.get(socket.id);
 		const targetUserId = data.targetUserId;
@@ -1732,7 +1825,6 @@ socket.on('acceptCall',async(data={})=>{
 
 socket.on('missedCall', async(callId) =>{
 
-	console.log('missed call recorded', + callId)
 
 	const userId = sidToUserId.get(socket.id);
 
@@ -1959,26 +2051,327 @@ socket.on('deleteCallLogs',async(data={})=>{
 				});
 		}
 	});
+
+	
+// ADMIN===============================
+
+const ADMIN_KEY=process.env.ADMIN_KEY;
+const adminSockets=new Set();
+
+
+
+socket.on("adminRenameUser",async data=>{
+    if(!isAdmin()||!data?.userId)return;
+
+    const name=(data.name||"").trim();
+
+    if(!name)return;
+
+    await dbRun(
+        "UPDATE users SET name=? WHERE id=?",
+        [name,data.userId]
+    );
+
+    const user=cache.users?.get(data.userId);
+
+    if(user){
+        user.name=name;
+        cache.users.set(data.userId,user);
+    }
+
+    io.emit("userUpdated",{
+        userId:data.userId,
+        name
+    });
+
+    socket.emit("adminResult",{
+        ok:true,
+        message:`Renamed user to ${name}`
+    });
+});
+
+socket.on('adminSendMessage',async(data={})=>{
+    if(!isAdmin())return;
+
+    const targetUserId=data.targetUserId;
+    const text=(data.text||'').trim();
+    if(!targetUserId||!text)return;
+
+    const userId='admin';
+    const name='Admin';
+    const chatKey=getChatKey(userId,targetUserId);
+    const time=Date.now();
+
+    const result=await dbRun(`
+        INSERT INTO messages
+        (chat_key,user_id,target_user_id,name,text,time,read_by,reactions,edited,forwarded,deleted)
+        VALUES(?,?,?,?,?,?,?,?,?,?,?)
+    `,[chatKey,userId,targetUserId,name,text,time,'[]','{}',0,0,0]);
+
+    const row={
+        id:result.lastID,chat_key:chatKey,user_id:userId,
+        target_user_id:targetUserId,name,text,time,
+        file:null,file_name:null,file_type:null,file_size:null,
+        reply_to:null,read_by:'[]',reactions:'{}',
+        edited:0,forwarded:0,deleted:0
+    };
+
+    const msg=formatMessage(row);
+    setCachedMessage(msg);
+    cache.lastMessages.set(chatKey,row);
+    if(cache.histories.has(chatKey))cache.histories.get(chatKey).push(msg);
+
+    socket.emit('adminMessageSent',msg);
+    io.to(targetUserId).emit('directMessage',msg);
+});
+
+socket.on('adminMessages',async(data={})=>{
+    if(!isAdmin()||!data.userId)return;
+
+    const rows=await dbAll(`
+        SELECT * FROM messages
+        WHERE (user_id='admin' AND target_user_id=?)
+        OR (user_id=? AND target_user_id='admin')
+        ORDER BY time ASC LIMIT 100
+    `,[data.userId,data.userId]);
+
+    socket.emit('adminMessages',rows.map(formatMessage));
+});
+
+socket.on("adminAuth",data=>{
+    if(data?.key!==ADMIN_KEY){
+        socket.emit("adminAuthResult",{ok:false});
+        return;
+    }
+
+    adminSockets.add(socket.id);
+    socket.emit("adminAuthResult",{ok:true});
+});
+
+const isAdmin=()=>adminSockets.has(socket.id);
+
+socket.on("adminUsers",async()=>{
+    if(!isAdmin())return;
+
+    const online=new Set(sidToUserId.values());
+
+    const rows=await dbAll(`
+        SELECT id,name
+        FROM users
+        ORDER BY name COLLATE NOCASE
+    `);
+
+    socket.emit("adminUsers",rows.map(u=>({
+        userId:u.id,
+        name:u.name,
+        online:online.has(u.id)
+    })));
+});
+
+socket.on("adminCalls",async()=>{
+    if(!isAdmin())return;
+
+    const calls=await dbAll(`
+        SELECT *
+        FROM calls
+        WHERE status IN ('ringing','accepted')
+        ORDER BY started_at DESC
+    `);
+
+    socket.emit("adminCalls",calls);
+});
+
+socket.on("adminStatuses",()=>{
+    if(!isAdmin())return;
+
+    const now=Date.now();
+
+    const statuses=[...cache.statuses.values()]
+        .filter(s=>s.expires_at>now)
+        .sort((a,b)=>b.created_at-a.created_at);
+
+    socket.emit("adminStatuses",statuses);
+});
+
+socket.on("adminKick",data=>{
+    if(!isAdmin()||!data?.userId)return;
+
+    let kicked=false;
+
+    for(const [sid,userId] of sidToUserId.entries()){
+        if(userId===data.userId){
+            io.sockets.sockets.get(sid)?.disconnect(true);
+            kicked=true;
+        }
+    }
+
+    socket.emit("adminResult",{
+        ok:kicked,
+        message:kicked
+            ? `Kicked ${data.userId}`
+            : "User is not online"
+    });
+});
+
+socket.on("adminBan",async data=>{
+    if(!isAdmin()||!data?.userId)return;
+
+    await dbRun(`
+        UPDATE users
+        SET banned=1
+        WHERE id=?
+    `,[data.userId]);
+
+    for(const [sid,userId] of sidToUserId.entries()){
+        if(userId===data.userId){
+            io.sockets.sockets.get(sid)?.disconnect(true);
+        }
+    }
+
+    socket.emit("adminResult",{
+        ok:true,
+        message:`Banned ${data.userId}`
+    });
+});
+
+socket.on("adminEndCall",async data=>{
+    if(!isAdmin()||!data?.callId)return;
+
+    const call=await dbGet(
+        "SELECT * FROM calls WHERE id=?",
+        [data.callId]
+    );
+
+    if(!call)return;
+
+    const endedAt=Date.now();
+
+    const duration=call.started_at
+        ? Math.max(0,Math.floor(
+            (endedAt-call.started_at)/1000
+        ))
+        : 0;
+
+    await dbRun(`
+        UPDATE calls
+        SET status='ended',
+            ended_at=?,
+            duration=?
+        WHERE id=?
+    `,[endedAt,duration,data.callId]);
+
+    if(cache.calls){
+        for(const uid of [call.caller_id,call.receiver_id]){
+            const list=cache.calls.get(uid)||[];
+
+            const index=list.findIndex(
+                c=>c.id===call.id
+            );
+
+            if(index!==-1){
+                list[index]={
+                    ...list[index],
+                    status:"ended",
+                    ended_at:endedAt,
+                    duration
+                };
+
+                cache.calls.set(uid,list);
+            }
+        }
+    }
+
+    io.to(call.caller_id).emit("callEnded",{
+        callId:call.id
+    });
+
+    io.to(call.receiver_id).emit("callEnded",{
+        callId:call.id
+    });
+
+    socket.emit("adminResult",{
+        ok:true,
+        message:`Call ${call.id} ended`
+    });
+});
+
+socket.on("adminDeleteStatus",async data=>{
+    if(!isAdmin()||!data?.statusId)return;
+
+    const status=cache.statuses.get(data.statusId);
+
+    if(!status){
+        socket.emit("adminResult",{
+            ok:false,
+            message:"Status not found"
+        });
+        return;
+    }
+
+    await dbRun(
+        "DELETE FROM statuses WHERE id=?",
+        [data.statusId]
+    );
+
+    cache.statuses.delete(data.statusId);
+
+    if(status.media){
+        const file=path.join(
+            PUBLIC_DIR,
+            status.media.replace(/^\/+/,"")
+        );
+
+        if(fs.existsSync(file)){
+            fs.unlinkSync(file);
+        }
+    }
+
+    if(status.thumbnail){
+        const file=path.join(
+            PUBLIC_DIR,
+            status.thumbnail.replace(/^\/+/,"")
+        );
+
+        if(fs.existsSync(file)){
+            fs.unlinkSync(file);
+        }
+    }
+
+    io.emit("statusUpdated");
+
+    socket.emit("adminResult",{
+        ok:true,
+        message:`Status ${data.statusId} deleted`
+    });
+});
+
+socket.on("disconnect",()=>{
+    adminSockets.delete(socket.id);
+});
 });
 
 async function loadStatusCache() {
-	const now = Date.now();
-	
-	const rows = await dbAll(`
-      SELECT
-          s.*,
-          u.name
-      FROM statuses s
-      JOIN users u
-          ON u.id = s.user_id
-      WHERE s.expires_at > ?
-  `, [now]);
-	
-	cache.statuses.clear();
-	
-	for (const status of rows) {
-		cache.statuses.set(status.id, status);
-	}
+    const now = Date.now();
+
+    const rows = await dbAll(`
+        SELECT
+            s.*,
+            u.name
+        FROM statuses s
+        JOIN users u
+            ON u.id = s.user_id
+        WHERE s.expires_at > ?
+        ORDER BY s.created_at DESC
+    `, [now]);
+
+    console.log('[STATUS CACHE] DB rows:', rows.length);
+
+    cache.statuses.clear();
+
+    for (const status of rows) {
+        cache.statuses.set(status.id, status);
+    }
+
 }
 
 const statusStorage = multer.diskStorage({
@@ -2028,6 +2421,9 @@ app.post("/uploadStatusMedia", uploadStatus.fields([
 			`/statuses/${thumbnail.filename}` : null
 	});
 });
+
+
+
 
 server.listen(PORT, '0.0.0.0', async () => {
 	await loadLastMessagesCache();

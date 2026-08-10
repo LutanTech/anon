@@ -1,0 +1,1346 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AnonChat Admin Command Center</title>
+    <!-- Socket.io -->
+    <script src="/socket.io/socket.io.js"></script>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome 6 CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#ecfdf5',
+                            100: '#d1fae5',
+                            400: '#34d399',
+                            500: '#10b981',
+                            600: '#059669',
+                            700: '#047857',
+                            900: '#064e3b',
+                        },
+                        dark: {
+                            bg: '#05080e',
+                            card: '#0b111e',
+                            surface: '#0f172a',
+                            border: '#1e293b',
+                            borderLight: '#334155',
+                            hover: '#162032',
+                            sidebar: '#080d1a'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background-color: #05080e;
+            color: #f1f5f9;
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* Custom scrollbars */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #05080e; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 9999px; }
+        ::-webkit-scrollbar-thumb:hover { background: #334155; }
+
+        /* Glow effects */
+        .glow-brand {
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.2);
+        }
+        .glow-blue {
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+        }
+        .glow-purple {
+            box-shadow: 0 0 20px rgba(168, 85, 247, 0.2);
+        }
+
+        /* Sound wave animation for active calls */
+        @keyframes wavePulse {
+            0%, 100% { height: 4px; }
+            50% { height: 18px; }
+        }
+        .wave-bar {
+            animation: wavePulse 1.2s ease-in-out infinite;
+        }
+        .wave-bar:nth-child(2) { animation-delay: 0.2s; }
+        .wave-bar:nth-child(3) { animation-delay: 0.4s; }
+        .wave-bar:nth-child(4) { animation-delay: 0.1s; }
+        .wave-bar:nth-child(5) { animation-delay: 0.3s; }
+
+        /* Glassmorphic panel styling */
+        .glass-card {
+            background: rgba(11, 17, 30, 0.85);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(30, 41, 59, 0.8);
+        }
+        .glass-card-interactive {
+            background: rgba(11, 17, 30, 0.85);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(30, 41, 59, 0.8);
+            transition: all 0.2s ease-in-out;
+        }
+        .glass-card-interactive:hover {
+            border-color: rgba(51, 65, 85, 1);
+            transform: translateY(-1px);
+        }
+
+        /* Page transitions */
+        .page-fade {
+            animation: fadeIn 0.2s ease-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+
+<body class="min-h-screen text-slate-200 antialiased selection:bg-brand-500 selection:text-white">
+
+<div class="flex h-screen overflow-hidden bg-dark-bg">
+
+    <!-- Mobile Sidebar Backdrop Overlay -->
+    <div id="mobile-overlay" onclick="toggleMobileSidebar()" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 hidden lg:hidden"></div>
+
+    <aside id="sidebar" class="fixed lg:static inset-y-0 left-0 w-64 bg-dark-sidebar border-r border-dark-border z-50 flex flex-col transition-transform duration-300 transform -translate-x-full lg:translate-x-0">
+        
+        <!-- Sidebar Branding -->
+        <div class="p-5 border-b border-dark-border flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-500 to-emerald-700 text-white flex items-center justify-center font-bold text-lg shadow-md glow-brand">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <div>
+                    <div class="font-extrabold text-base tracking-wide text-white flex items-center gap-1.5">
+                        AnonChat
+                        <span class="text-[9px] px-1.5 py-0.5 rounded-full bg-brand-500/20 text-brand-400 font-semibold border border-brand-500/30 font-mono">v2.4</span>
+                    </div>
+                    <div class="text-[10px] text-slate-400 tracking-wider font-mono uppercase">Control Center</div>
+                </div>
+            </div>
+            <button onclick="toggleMobileSidebar()" class="lg:hidden text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+
+        <!-- Connection Indicator -->
+        <div class="px-4 py-2.5 bg-dark-card/60 border-b border-dark-border/60 flex items-center justify-between text-xs">
+            <span class="text-slate-400 flex items-center gap-2">
+                <span class="relative flex h-2 w-2">
+                    <span id="status-pulse" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                    <span id="status-dot" class="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                </span>
+                <span id="socket-status-text" class="text-amber-400 font-medium">Connecting...</span>
+            </span>
+            <span id="latency-val" class="font-mono text-[11px] text-slate-500">-- ms</span>
+        </div>
+
+        <!-- Navigation Links -->
+        <nav class="p-3 space-y-1.5 flex-1 overflow-y-auto">
+
+            <button onclick="showPage('dashboard')" data-page="dashboard"
+                class="nav-item w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:bg-dark-hover hover:text-white transition-all group">
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-chart-pie w-4 text-center group-hover:scale-110 transition-transform"></i>
+                    <span>Dashboard</span>
+                </div>
+                <span id="nav-badge-users" class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full font-mono">0</span>
+            </button>
+
+            <button onclick="showPage('users')" data-page="users"
+                class="nav-item w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:bg-dark-hover hover:text-white transition-all group">
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-users-gear w-4 text-center group-hover:scale-110 transition-transform"></i>
+                    <span>User Directory</span>
+                </div>
+            </button>
+
+            <button onclick="showPage('calls')" data-page="calls"
+                class="nav-item w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:bg-dark-hover hover:text-white transition-all group">
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-headset w-4 text-center group-hover:scale-110 transition-transform"></i>
+                    <span>Active Calls</span>
+                </div>
+                <span id="nav-badge-calls" class="text-[10px] bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded-full font-mono border border-blue-500/20">0</span>
+            </button>
+
+            <button onclick="showPage('statuses')" data-page="statuses"
+                class="nav-item w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:bg-dark-hover hover:text-white transition-all group">
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-circle-play w-4 text-center group-hover:scale-110 transition-transform"></i>
+                    <span>Status Feed</span>
+                </div>
+                <span id="nav-badge-statuses" class="text-[10px] bg-purple-500/10 text-purple-400 px-2 py-0.5 rounded-full font-mono border border-purple-500/20">0</span>
+            </button>
+
+            <button onclick="showPage('messages')" data-page="messages"
+                class="nav-item w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:bg-dark-hover hover:text-white transition-all group">
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-comments w-4 text-center group-hover:scale-110 transition-transform"></i>
+                    <span>Admin Chat</span>
+                </div>
+            </button>
+
+            <button onclick="showPage('logs')" data-page="logs"
+                class="nav-item w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:bg-dark-hover hover:text-white transition-all group">
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-terminal w-4 text-center group-hover:scale-110 transition-transform"></i>
+                    <span>Audit Logs</span>
+                </div>
+            </button>
+
+        </nav>
+
+        <!-- Sidebar Footer -->
+        <div class="p-4 border-t border-dark-border bg-dark-bg/50 flex items-center justify-between text-xs text-slate-400">
+            <div class="flex items-center gap-2">
+                <div class="w-2 h-2 rounded-full bg-emerald-400"></div>
+                <span class="font-mono text-[11px]">Realtime Engine</span>
+            </div>
+            <span class="text-[10px] text-slate-500 font-mono">Clean Feed</span>
+        </div>
+
+    </aside>
+
+    <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+
+        <header class="h-16 border-b border-dark-border bg-dark-sidebar/80 backdrop-blur-md flex items-center justify-between px-4 lg:px-8 z-30">
+
+            <div class="flex items-center gap-3">
+                <button onclick="toggleMobileSidebar()" class="lg:hidden p-2 rounded-lg bg-dark-card border border-dark-border text-slate-300 hover:text-white">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <div>
+                    <h1 id="page-title" class="font-bold text-lg text-white leading-none">Dashboard</h1>
+                    <div class="text-[11px] text-slate-400 mt-1 font-mono">ANONCHAT REALTIME DISPATCH</div>
+                </div>
+            </div>
+
+            <!-- Header Status Controls -->
+            <div class="flex items-center gap-3">
+                
+                <div class="hidden sm:flex items-center bg-dark-card border border-dark-border rounded-xl px-3 py-1.5 gap-2 text-xs text-slate-400">
+                    <i class="fa-solid fa-clock text-slate-500"></i>
+                    <span id="uptime-display" class="font-mono text-slate-300">Uptime: 00:00:00</span>
+                </div>
+
+                <button onclick="refreshAll()" title="Refresh Socket Data"
+                    class="w-9 h-9 rounded-xl bg-dark-card border border-dark-border hover:border-brand-500/50 hover:bg-dark-hover text-slate-300 hover:text-brand-400 flex items-center justify-center transition-all shadow-sm group">
+                    <i id="refresh-icon" class="fa-solid fa-rotate group-hover:rotate-180 transition-transform duration-500 text-sm"></i>
+                </button>
+
+                <!-- Admin Badge -->
+                <div class="flex items-center gap-2.5 pl-2 border-l border-dark-border">
+                    <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 text-white flex items-center justify-center font-bold text-sm shadow-md">
+                        <i class="fa-solid fa-user-shield"></i>
+                    </div>
+                    <div class="hidden md:block">
+                        <div class="text-xs font-semibold text-white leading-tight">Super Admin</div>
+                        <div class="text-[10px] text-emerald-400 font-mono">Authenticated</div>
+                    </div>
+                </div>
+
+            </div>
+
+        </header>
+
+        <main class="flex-1 overflow-y-auto p-4 lg:p-8 space-y-6">
+
+            <!-- PAGE 1: DASHBOARD -->
+            <section id="dashboard" class="admin-page page-fade space-y-6">
+
+                <!-- Dynamic Live Counters Grid -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
+                    <!-- Stat 1: Total Registered -->
+                    <div class="glass-card-interactive rounded-2xl p-5 relative overflow-hidden group">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider font-mono">Total Users</span>
+                            <div class="w-9 h-9 rounded-xl bg-slate-800 text-slate-300 flex items-center justify-center text-sm border border-slate-700/50">
+                                <i class="fa-solid fa-users"></i>
+                            </div>
+                        </div>
+                        <div id="total-users" class="text-3xl font-extrabold text-white mt-2 font-mono">0</div>
+                        <div class="mt-3 flex items-center gap-1.5 text-xs text-slate-400">
+                            <i class="fa-solid fa-circle-info text-[10px] text-slate-500"></i>
+                            <span>Connected user store</span>
+                        </div>
+                    </div>
+
+                    <!-- Stat 2: Active Online -->
+                    <div class="glass-card-interactive rounded-2xl p-5 relative overflow-hidden group">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider font-mono">Active Online</span>
+                            <div class="w-9 h-9 rounded-xl bg-brand-500/10 text-brand-400 flex items-center justify-center text-sm border border-brand-500/20">
+                                <i class="fa-solid fa-signal"></i>
+                            </div>
+                        </div>
+                        <div id="online-users" class="text-3xl font-extrabold text-brand-400 mt-2 font-mono">0</div>
+                        <div class="mt-3 flex items-center gap-2 text-xs text-slate-400">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                            <span>Live websocket channels</span>
+                        </div>
+                    </div>
+
+                    <!-- Stat 3: Active Calls -->
+                    <div class="glass-card-interactive rounded-2xl p-5 relative overflow-hidden group">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider font-mono">Active Calls</span>
+                            <div class="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center text-sm border border-blue-500/20">
+                                <i class="fa-solid fa-phone-volume"></i>
+                            </div>
+                        </div>
+                        <div id="active-calls" class="text-3xl font-extrabold text-blue-400 mt-2 font-mono">0</div>
+                        <div class="mt-3 flex items-center gap-1.5 text-xs text-blue-400">
+                            <i class="fa-solid fa-bolt text-[10px]"></i>
+                            <span>Peer-to-Peer Webrtc</span>
+                        </div>
+                    </div>
+
+                    <!-- Stat 4: Total Statuses -->
+                    <div class="glass-card-interactive rounded-2xl p-5 relative overflow-hidden group">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider font-mono">Statuses Posted</span>
+                            <div class="w-9 h-9 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center text-sm border border-purple-500/20">
+                                <i class="fa-solid fa-photo-film"></i>
+                            </div>
+                        </div>
+                        <div id="total-statuses" class="text-3xl font-extrabold text-purple-400 mt-2 font-mono">0</div>
+                        <div class="mt-3 flex items-center gap-1.5 text-xs text-slate-400">
+                            <i class="fa-solid fa-hourglass-half text-[10px] text-purple-400"></i>
+                            <span>24h Ephemeral Stories</span>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Live Online Users Section -->
+                <div class="glass-card rounded-2xl overflow-hidden border border-dark-border">
+
+                    <div class="p-5 border-b border-dark-border flex items-center justify-between bg-dark-sidebar/40">
+                        <div class="flex items-center gap-3">
+                            <div class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                            <h2 class="font-bold text-base text-white">Live Connected Clients</h2>
+                        </div>
+                        <span class="text-xs text-slate-400 font-mono">Socket Event Stream</span>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm text-slate-300">
+                            <thead class="text-xs uppercase bg-dark-bg/70 text-slate-400 border-b border-dark-border font-mono">
+                                <tr>
+                                    <th class="px-5 py-3.5">User Handle</th>
+                                    <th class="px-5 py-3.5">User ID / Socket</th>
+                                    <th class="px-5 py-3.5">Device Platform</th>
+                                    <th class="px-5 py-3.5">State</th>
+                                    <th class="px-5 py-3.5 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dashboard-users-tbody" class="divide-y divide-dark-border/60">
+                                <!-- Dynamic rows filled via Socket.io -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="dashboard-users-empty" class="p-12 text-center text-slate-500 text-sm">
+                        <div class="w-12 h-12 rounded-2xl bg-dark-card border border-dark-border flex items-center justify-center mx-auto mb-3 text-slate-600 text-xl">
+                            <i class="fa-solid fa-network-wired"></i>
+                        </div>
+                        <p class="font-medium text-slate-400">No connected users live on stream</p>
+                        <p class="text-xs text-slate-600 mt-1">Connected socket clients will automatically appear here.</p>
+                    </div>
+
+                </div>
+
+            </section>
+
+            <section id="users" class="admin-page hidden page-fade space-y-4">
+
+                <div class="glass-card rounded-2xl overflow-hidden border border-dark-border">
+
+                    <!-- Search and Action Toolbar -->
+                    <div class="p-5 border-b border-dark-border flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 bg-dark-sidebar/40">
+
+                        <div>
+                            <h2 class="font-bold text-lg text-white">User Directory</h2>
+                            <p class="text-xs text-slate-400">Inspect, search, rename, disconnect or ban live users.</p>
+                        </div>
+
+                        <div class="flex items-center gap-3">
+                            <div class="relative flex-1 md:w-64">
+                                <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+                                <input id="user-search"
+                                    oninput="renderUsers()"
+                                    placeholder="Search user name or ID..."
+                                    class="w-full bg-dark-bg border border-dark-border rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 outline-none focus:border-brand-500 transition-colors">
+                            </div>
+
+                            <button onclick="renderUsers()" class="px-3.5 py-2 rounded-xl bg-dark-card border border-dark-border hover:bg-dark-hover text-xs font-semibold text-slate-300 transition-colors">
+                                <i class="fa-solid fa-filter mr-1.5 text-slate-400"></i>
+                                Filter
+                            </button>
+                        </div>
+
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm text-slate-300">
+                            <thead class="text-xs uppercase bg-dark-bg/70 text-slate-400 border-b border-dark-border font-mono">
+                                <tr>
+                                    <th class="px-5 py-3.5">User Details</th>
+                                    <th class="px-5 py-3.5">Unique Identifier</th>
+                                    <th class="px-5 py-3.5">Client Device</th>
+                                    <th class="px-5 py-3.5">Status</th>
+                                    <th class="px-5 py-3.5 text-right">Control</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-list-tbody" class="divide-y divide-dark-border/60">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="users-empty" class="p-12 text-center text-slate-500 text-sm">
+                        <div class="w-12 h-12 rounded-2xl bg-dark-card border border-dark-border flex items-center justify-center mx-auto mb-3 text-slate-600 text-xl">
+                            <i class="fa-solid fa-user-slash"></i>
+                        </div>
+                        <p class="font-medium text-slate-400">No active users found</p>
+                        <p class="text-xs text-slate-600 mt-1">When users connect to the server, they will populate this directory.</p>
+                    </div>
+
+                </div>
+
+            </section>
+
+            <section id="calls" class="admin-page hidden page-fade space-y-4">
+
+                <div class="glass-card rounded-2xl overflow-hidden border border-dark-border">
+
+                    <div class="p-5 border-b border-dark-border flex items-center justify-between bg-dark-sidebar/40">
+                        <div>
+                            <h2 class="font-bold text-lg text-white">Live Voice & Video Sessions</h2>
+                            <p class="text-xs text-slate-400">Monitor active peer connections and terminate policy-violating calls.</p>
+                        </div>
+                        <span class="px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 text-xs font-mono font-medium border border-blue-500/20">
+                            WebRTC Monitor
+                        </span>
+                    </div>
+
+                    <div id="calls-list" class="divide-y divide-dark-border/60">
+                        <!-- Dynamic call sessions -->
+                    </div>
+
+                    <div id="calls-empty" class="p-12 text-center text-slate-500 text-sm">
+                        <div class="w-12 h-12 rounded-2xl bg-dark-card border border-dark-border flex items-center justify-center mx-auto mb-3 text-slate-600 text-xl">
+                            <i class="fa-solid fa-phone-slash"></i>
+                        </div>
+                        <p class="font-medium text-slate-400">No ongoing calls</p>
+                        <p class="text-xs text-slate-600 mt-1">Live WebRTC audio and video calls will display here in real time.</p>
+                    </div>
+
+                </div>
+
+            </section>
+
+            <section id="statuses" class="admin-page hidden page-fade space-y-4">
+
+                <div class="glass-card rounded-2xl p-5 border border-dark-border flex items-center justify-between">
+                    <div>
+                        <h2 class="font-bold text-lg text-white">Status Stories Feed</h2>
+                        <p class="text-xs text-slate-400">Moderate ephemeral story posts shared across the platform.</p>
+                    </div>
+                    <span class="text-xs font-mono text-slate-500">Live Feed</span>
+                </div>
+
+                <div id="statuses-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Dynamic status story cards -->
+                </div>
+
+                <div id="statuses-empty" class="glass-card p-12 text-center text-slate-500 rounded-2xl">
+                    <div class="w-12 h-12 rounded-2xl bg-dark-card border border-dark-border flex items-center justify-center mx-auto mb-3 text-slate-600 text-xl">
+                        <i class="fa-solid fa-photo-film"></i>
+                    </div>
+                    <p class="font-medium text-slate-400">No public statuses published</p>
+                    <p class="text-xs text-slate-600 mt-1">User-submitted stories and media updates will show up here.</p>
+                </div>
+
+            </section>
+
+            <section id="messages" class="admin-page hidden page-fade">
+
+                <div class="glass-card rounded-2xl overflow-hidden border border-dark-border flex flex-col md:flex-row h-[calc(100vh-160px)]">
+
+                    <!-- Left: User Selection Sidebar -->
+                    <div class="w-full md:w-80 border-b md:border-b-0 md:border-r border-dark-border flex flex-col bg-dark-sidebar/40">
+
+                        <div class="p-4 border-b border-dark-border space-y-3">
+                            <h3 class="font-bold text-sm text-white flex items-center justify-between">
+                                <span>Conversations</span>
+                                <span class="text-[10px] bg-brand-500/10 text-brand-400 px-2 py-0.5 rounded-full font-mono">Direct Admin</span>
+                            </h3>
+                            <div class="relative">
+                                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+                                <input
+                                    id="message-user-search"
+                                    oninput="renderMessageUsers()"
+                                    placeholder="Filter connected users..."
+                                    class="w-full bg-dark-bg border border-dark-border rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 outline-none focus:border-brand-500">
+                            </div>
+                        </div>
+
+                        <div id="message-users" class="flex-1 overflow-y-auto divide-y divide-dark-border/40">
+                            <!-- Dynamic user conversation buttons -->
+                        </div>
+
+                    </div>
+
+                    <!-- Right: Direct Chat Box -->
+                    <div class="flex-1 flex flex-col bg-dark-card/30">
+
+                        <!-- Chat Header -->
+                        <div id="message-header" class="p-4 border-b border-dark-border bg-dark-sidebar/30 flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-dark-bg border border-dark-border flex items-center justify-center text-slate-400">
+                                    <i class="fa-solid fa-comments text-base"></i>
+                                </div>
+                                <div>
+                                    <div class="font-bold text-white text-sm">Select a user to begin</div>
+                                    <div class="text-[10px] text-slate-500">Choose a connected user from the conversation list</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Chat Message Feed -->
+                        <div id="admin-messages" class="flex-1 overflow-y-auto p-5 space-y-3">
+                            <div class="h-full flex flex-col items-center justify-center text-slate-500 text-sm space-y-2">
+                                <i class="fa-solid fa-paper-plane text-3xl opacity-20"></i>
+                                <p class="text-slate-400 font-medium">No conversation selected</p>
+                                <p class="text-xs text-slate-600">Select an active user from the sidebar to send administrative notices.</p>
+                            </div>
+                        </div>
+
+                        <!-- Admin Quick Response Templates -->
+                        <div class="px-4 py-2 border-t border-dark-border/60 bg-dark-bg/40 flex items-center gap-2 overflow-x-auto text-xs">
+                            <span class="text-[10px] uppercase font-mono text-slate-500 whitespace-nowrap">Presets:</span>
+                            <button onclick="insertTemplate('⚠️ System Notice: Please refrain from violating community guidelines.')" class="px-2.5 py-1 rounded-lg bg-dark-card hover:bg-slate-800 text-slate-300 whitespace-nowrap text-[11px] border border-dark-border transition-colors">
+                                Rules Warning
+                            </button>
+                            <button onclick="insertTemplate('🔧 Scheduled server maintenance will begin shortly.')" class="px-2.5 py-1 rounded-lg bg-dark-card hover:bg-slate-800 text-slate-300 whitespace-nowrap text-[11px] border border-dark-border transition-colors">
+                                Maintenance
+                            </button>
+                            <button onclick="insertTemplate('✅ Your account status has been verified by administration.')" class="px-2.5 py-1 rounded-lg bg-dark-card hover:bg-slate-800 text-slate-300 whitespace-nowrap text-[11px] border border-dark-border transition-colors">
+                                Verified
+                            </button>
+                        </div>
+
+                        <!-- Message Input Container -->
+                        <div class="p-4 border-t border-dark-border flex gap-3 bg-dark-sidebar/40">
+
+                            <input
+                                id="admin-message-input"
+                                onkeydown="if(event.key==='Enter')sendAdminMessage()"
+                                placeholder="Type an administrative directive or broadcast..."
+                                class="flex-1 bg-dark-bg border border-dark-border rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-brand-500 transition-colors">
+
+                            <button
+                                onclick="sendAdminMessage()"
+                                class="px-5 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-emerald-400 text-white font-semibold text-sm shadow-md transition-all flex items-center gap-2 glow-brand">
+                                <span>Send</span>
+                                <i class="fa-solid fa-paper-plane text-xs"></i>
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+            <section id="logs" class="admin-page hidden page-fade space-y-4">
+
+                <div class="glass-card rounded-2xl overflow-hidden border border-dark-border">
+
+                    <div class="p-5 border-b border-dark-border flex items-center justify-between bg-dark-sidebar/40">
+                        <div>
+                            <h2 class="font-bold text-lg text-white">System Audit & Activity Logs</h2>
+                            <p class="text-xs text-slate-400">Live stream of admin actions, socket events, and administrative overrides.</p>
+                        </div>
+                        
+                        <div class="flex items-center gap-2">
+                            <button onclick="clearLogs()" class="px-3 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-xs font-semibold transition-colors">
+                                Clear Log
+                            </button>
+                            <button onclick="copyLogs()" class="px-3 py-1.5 rounded-xl bg-dark-card hover:bg-dark-hover text-slate-300 border border-dark-border text-xs font-semibold transition-colors">
+                                Copy All
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="logs-list" class="p-5 font-mono text-xs text-emerald-400 bg-dark-bg/95 space-y-2 h-[500px] overflow-y-auto rounded-b-2xl border-t border-dark-border/40">
+                        <!-- Dynamic log entries injected here -->
+                    </div>
+
+                </div>
+
+            </section>
+
+        </main>
+
+    </div>
+
+</div>
+
+<div id="user-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+
+    <div class="glass-card rounded-2xl w-full max-w-md border border-dark-border shadow-2xl overflow-hidden">
+
+        <!-- Modal Header -->
+        <div class="p-5 border-b border-dark-border flex items-center justify-between bg-dark-sidebar/80">
+            <div class="flex items-center gap-3">
+                <div id="modal-avatar-bg" class="w-10 h-10 rounded-xl bg-brand-500/20 text-brand-400 border border-brand-500/30 flex items-center justify-center font-bold text-lg">
+                    <span id="modal-avatar-char">A</span>
+                </div>
+                <div>
+                    <div id="modal-name" class="font-bold text-base text-white">User Name</div>
+                    <div id="modal-id" class="text-xs text-slate-400 font-mono">usr_id</div>
+                </div>
+            </div>
+
+            <button onclick="closeUserModal()" class="w-8 h-8 rounded-lg bg-dark-card hover:bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <!-- Modal Actions Body -->
+        <div class="p-5 space-y-4">
+
+            <!-- Change Name Section -->
+            <div class="space-y-1.5">
+                <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider font-mono">Rename User Alias</label>
+                <div class="flex gap-2">
+                    <input id="admin-new-name"
+                        class="flex-1 bg-dark-bg border border-dark-border rounded-xl px-3.5 py-2 text-sm text-white placeholder-slate-500 outline-none focus:border-brand-500 transition-colors"
+                        placeholder="Enter new displayed name">
+                    
+                    <button onclick="renameSelected()"
+                        class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition-colors flex items-center gap-1.5">
+                        <i class="fa-solid fa-pen text-xs"></i>
+                        <span>Update</span>
+                    </button>
+                </div>
+            </div>
+
+            <hr class="border-dark-border">
+
+            <div class="space-y-2">
+                <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider font-mono">Security Controls</label>
+
+                <!-- Kick User Button -->
+                <button onclick="kickSelected()"
+                    class="w-full p-3 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 text-sm font-semibold text-left transition-colors flex items-center justify-between group">
+                    <div class="flex items-center gap-2.5">
+                        <i class="fa-solid fa-right-from-bracket group-hover:translate-x-1 transition-transform"></i>
+                        <span>Kick Session</span>
+                    </div>
+                    <span class="text-[10px] font-mono opacity-70">Disconnect Socket</span>
+                </button>
+
+                <!-- Ban User Button -->
+                <button onclick="banSelected()"
+                    class="w-full p-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-sm font-semibold text-left transition-colors flex items-center justify-between group">
+                    <div class="flex items-center gap-2.5">
+                        <i class="fa-solid fa-ban group-hover:scale-110 transition-transform"></i>
+                        <span>Ban User ID</span>
+                    </div>
+                    <span class="text-[10px] font-mono opacity-70">Permanent Block</span>
+                </button>
+            </div>
+
+        </div>
+
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm pointer-events-none"></div>
+
+<script>
+    let users = [];
+    let calls = [];
+    let statuses = [];
+    let selectedUser = null;
+    let selectedMessageUser = null;
+    let adminMessages = [];
+    let uptimeSeconds = 0;
+
+    // Connect to Socket.io backend
+    const socket = (typeof io !== 'undefined') ? io() : null;
+
+    window.onload = function() {
+        startUptimeCounter();
+        addLog("Admin Dashboard initialized cleanly with no dummy data.");
+
+        if (socket) {
+            const key = prompt("Enter Admin Secret Key:", "admin123") || "admin123";
+            socket.emit("adminAuth", { key });
+
+            socket.on("connect", () => {
+                updateSocketStatus(true);
+                addLog("Connected to live socket server.");
+            });
+
+            socket.on("disconnect", () => {
+                updateSocketStatus(false);
+                addLog("Disconnected from socket server.");
+            });
+
+            socket.on("adminAuthResult", data => {
+                if (!data || !data.ok) {
+                    showToast("Authentication Failed!", "error");
+                    addLog("Authentication failed. Waiting for valid admin key.");
+                    return;
+                }
+                showToast("Admin Authenticated Successfully!", "success");
+                addLog("Admin authenticated.");
+                refreshAll();
+            });
+
+            // Socket Listeners
+            socket.on("adminUsers", data => {
+                users = data || [];
+                updateCounts();
+                renderUsers();
+                renderDashboardUsers();
+                renderMessageUsers();
+            });
+
+            socket.on("adminCalls", data => {
+                calls = data || [];
+                updateCounts();
+                renderCalls();
+            });
+
+            socket.on("adminStatuses", data => {
+                statuses = data || [];
+                updateCounts();
+                renderStatuses();
+            });
+
+            socket.on("adminResult", data => {
+                addLog(data.message || "Socket action completed");
+                showToast(data.message || "Action executed", "info");
+                refreshAll();
+            });
+
+            socket.on("adminMessages", data => {
+                adminMessages = data || [];
+                renderAdminMessages();
+            });
+
+            socket.on("userUpdated", data => {
+                const u = users.find(x => x.userId === data.userId);
+                if (u) {
+                    u.name = data.name;
+                    renderUsers();
+                    renderMessageUsers();
+                    renderDashboardUsers();
+                }
+            });
+
+            socket.on("adminMessageSent", msg => {
+                adminMessages.push(msg);
+                renderAdminMessages();
+            });
+        } else {
+            updateSocketStatus(false);
+            addLog("Socket.io library not detected. Listening mode active.");
+            renderAllViews();
+        }
+    };
+
+    function showPage(page) {
+        document.querySelectorAll(".admin-page").forEach(x => x.classList.add("hidden"));
+        const target = document.getElementById(page);
+        if (target) target.classList.remove("hidden");
+
+        document.querySelectorAll(".nav-item").forEach(x => {
+            x.classList.remove("bg-brand-500/10", "text-brand-400", "font-bold", "border-r-2", "border-brand-500");
+            x.classList.add("text-slate-400");
+        });
+
+        const activeNav = document.querySelector(`[data-page="${page}"]`);
+        if (activeNav) {
+            activeNav.classList.add("bg-brand-500/10", "text-brand-400", "font-bold");
+            activeNav.classList.remove("text-slate-400");
+        }
+
+        document.getElementById("page-title").textContent =
+            page.charAt(0).toUpperCase() + page.slice(1) + (page === 'users' ? ' Directory' : '');
+
+        // Close mobile sidebar
+        const sidebar = document.getElementById("sidebar");
+        sidebar.classList.add("-translate-x-full");
+        document.getElementById("mobile-overlay").classList.add("hidden");
+    }
+
+    function toggleMobileSidebar() {
+        const sidebar = document.getElementById("sidebar");
+        const overlay = document.getElementById("mobile-overlay");
+        if (sidebar.classList.contains("-translate-x-full")) {
+            sidebar.classList.remove("-translate-x-full");
+            overlay.classList.remove("hidden");
+        } else {
+            sidebar.classList.add("-translate-x-full");
+            overlay.classList.add("hidden");
+        }
+    }
+
+    function refreshAll() {
+        const icon = document.getElementById("refresh-icon");
+        if (icon) icon.classList.add("animate-spin");
+
+        if (socket && socket.connected) {
+            socket.emit("adminUsers");
+            socket.emit("adminCalls");
+            socket.emit("adminStatuses");
+        } else {
+            renderAllViews();
+        }
+
+        setTimeout(() => {
+            if (icon) icon.classList.remove("animate-spin");
+        }, 600);
+    }
+
+    function renderAllViews() {
+        updateCounts();
+        renderDashboardUsers();
+        renderUsers();
+        renderCalls();
+        renderStatuses();
+        renderMessageUsers();
+    }
+
+    function updateCounts() {
+        document.getElementById("total-users").textContent = users.length;
+        document.getElementById("online-users").textContent = users.length;
+        document.getElementById("active-calls").textContent = calls.length;
+        document.getElementById("total-statuses").textContent = statuses.length;
+
+        document.getElementById("nav-badge-users").textContent = users.length;
+        document.getElementById("nav-badge-calls").textContent = calls.length;
+        document.getElementById("nav-badge-statuses").textContent = statuses.length;
+    }
+
+    function renderDashboardUsers() {
+        const tbody = document.getElementById("dashboard-users-tbody");
+        const emptyState = document.getElementById("dashboard-users-empty");
+
+        if (!users || users.length === 0) {
+            tbody.innerHTML = "";
+            emptyState.classList.remove("hidden");
+            return;
+        }
+        emptyState.classList.add("hidden");
+
+        tbody.innerHTML = users.slice(0, 8).map(u => `
+            <tr class="hover:bg-dark-hover/60 transition-colors">
+                <td class="px-5 py-3.5">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl bg-brand-500/10 text-brand-400 font-bold flex items-center justify-center border border-brand-500/20">
+                            ${(u.name || "A")[0].toUpperCase()}
+                        </div>
+                        <div>
+                            <div class="font-semibold text-white">${escapeHTML(u.name || "Anonymous")}</div>
+                            <div class="text-[10px] text-slate-400">${u.device || 'Web Browser'}</div>
+                        </div>
+                    </div>
+                </td>
+                <td class="px-5 py-3.5 font-mono text-xs text-slate-400">${escapeHTML(u.userId || "")}</td>
+                <td class="px-5 py-3.5">
+                    <span class="px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 text-[11px] font-mono border border-slate-700/50">
+                        <i class="fa-solid fa-desktop mr-1 text-slate-400"></i> ${u.platform || 'Desktop'}
+                    </span>
+                </td>
+                <td class="px-5 py-3.5">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Online
+                    </span>
+                </td>
+                <td class="px-5 py-3.5 text-right">
+                    <button onclick='openUser(${JSON.stringify(u)})' class="px-3 py-1.5 rounded-lg bg-dark-card border border-dark-border hover:bg-dark-hover text-xs font-medium text-slate-300 transition-colors">
+                        Manage
+                    </button>
+                </td>
+            </tr>
+        `).join("");
+    }
+
+    function renderUsers() {
+        const search = (document.getElementById("user-search")?.value || "").toLowerCase();
+        const tbody = document.getElementById("users-list-tbody");
+        const empty = document.getElementById("users-empty");
+
+        const list = users.filter(u =>
+            (u.name || "").toLowerCase().includes(search) ||
+            (u.userId || "").toLowerCase().includes(search)
+        );
+
+        if (list.length === 0) {
+            tbody.innerHTML = "";
+            empty.classList.remove("hidden");
+            return;
+        }
+        empty.classList.add("hidden");
+
+        tbody.innerHTML = list.map(u => `
+            <tr class="hover:bg-dark-hover/60 transition-colors">
+                <td class="px-5 py-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-emerald-400 text-white font-bold flex items-center justify-center shadow-sm">
+                            ${(u.name || "A")[0].toUpperCase()}
+                        </div>
+                        <div>
+                            <div class="font-semibold text-white">${escapeHTML(u.name || "Anonymous User")}</div>
+                            <div class="text-[11px] text-slate-400">Connected socket client</div>
+                        </div>
+                    </div>
+                </td>
+                <td class="px-5 py-4 font-mono text-xs text-slate-400">${escapeHTML(u.userId)}</td>
+                <td class="px-5 py-4 text-xs">
+                    <span class="px-2.5 py-1 rounded-lg bg-dark-bg text-slate-300 font-mono border border-dark-border">
+                        ${u.device || 'Client Node'}
+                    </span>
+                </td>
+                <td class="px-5 py-4">
+                    <span class="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-semibold">
+                        Active Now
+                    </span>
+                </td>
+                <td class="px-5 py-4 text-right">
+                    <button onclick='openUser(${JSON.stringify(u)})'
+                        class="px-3.5 py-1.5 rounded-xl bg-brand-500/10 hover:bg-brand-500/20 text-brand-400 border border-brand-500/20 text-xs font-semibold transition-colors">
+                        <i class="fa-solid fa-sliders mr-1"></i> Control
+                    </button>
+                </td>
+            </tr>
+        `).join("");
+    }
+
+    function openUser(user) {
+        selectedUser = user;
+        document.getElementById("modal-name").textContent = user.name || "Unknown User";
+        document.getElementById("modal-id").textContent = user.userId || "";
+        document.getElementById("modal-avatar-char").textContent = (user.name || "A")[0].toUpperCase();
+        document.getElementById("admin-new-name").value = user.name || "";
+
+        const modal = document.getElementById("user-modal");
+        modal.classList.remove("hidden");
+        modal.classList.add("flex");
+    }
+
+    function closeUserModal() {
+        const modal = document.getElementById("user-modal");
+        modal.classList.add("hidden");
+        modal.classList.remove("flex");
+        selectedUser = null;
+    }
+
+    function kickSelected() {
+        if (!selectedUser) return;
+        if (socket && socket.connected) {
+            socket.emit("adminKick", { userId: selectedUser.userId });
+        } else {
+            users = users.filter(u => u.userId !== selectedUser.userId);
+            addLog(`Kicked user session ${selectedUser.userId}`);
+            showToast(`User ${selectedUser.name} kicked!`, "info");
+            renderAllViews();
+        }
+        closeUserModal();
+    }
+
+    function banSelected() {
+        if (!selectedUser) return;
+        if (socket && socket.connected) {
+            socket.emit("adminBan", { userId: selectedUser.userId });
+        } else {
+            users = users.filter(u => u.userId !== selectedUser.userId);
+            addLog(`Banned user ID ${selectedUser.userId}`);
+            showToast(`User ${selectedUser.name} banned!`, "error");
+            renderAllViews();
+        }
+        closeUserModal();
+    }
+
+    function renameSelected() {
+        if (!selectedUser) return;
+        const name = document.getElementById("admin-new-name").value.trim();
+        if (!name) return;
+
+        if (socket && socket.connected) {
+            socket.emit("adminRenameUser", { userId: selectedUser.userId, name });
+        } else {
+            selectedUser.name = name;
+            addLog(`Renamed user ${selectedUser.userId} to ${name}`);
+            showToast(`User renamed to ${name}`, "success");
+            renderAllViews();
+        }
+        closeUserModal();
+    }
+
+    function renderCalls() {
+        const container = document.getElementById("calls-list");
+        const emptyState = document.getElementById("calls-empty");
+
+        if (!calls || calls.length === 0) {
+            container.innerHTML = "";
+            emptyState.classList.remove("hidden");
+            return;
+        }
+        emptyState.classList.add("hidden");
+
+        container.innerHTML = calls.map(call => `
+            <div class="p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 hover:bg-dark-hover/40 transition-colors">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-400 border border-blue-500/20 flex items-center justify-center text-lg">
+                        <i class="fa-solid ${call.call_type === 'video' ? 'fa-video' : 'fa-phone'}"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-white text-base">${escapeHTML(call.call_type || "Audio Call").toUpperCase()}</span>
+                            <span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono text-[10px]">P2P Stream</span>
+                        </div>
+                        <div class="text-xs text-slate-400 mt-1 font-mono">
+                            <span class="text-brand-400">${escapeHTML(call.caller_id || "Peer A")}</span>
+                            <i class="fa-solid fa-arrow-right mx-1 text-slate-600 text-[10px]"></i>
+                            <span class="text-blue-400">${escapeHTML(call.receiver_id || "Peer B")}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Animated Sound Wave -->
+                <div class="flex items-center gap-1 h-6 px-3 py-1 bg-dark-bg border border-dark-border rounded-lg">
+                    <span class="w-1 bg-blue-400 rounded-full wave-bar"></span>
+                    <span class="w-1 bg-blue-400 rounded-full wave-bar"></span>
+                    <span class="w-1 bg-blue-400 rounded-full wave-bar"></span>
+                    <span class="w-1 bg-blue-400 rounded-full wave-bar"></span>
+                    <span class="w-1 bg-blue-400 rounded-full wave-bar"></span>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <button onclick="endCall(${call.id})"
+                        class="px-4 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-xs font-semibold transition-colors flex items-center gap-1.5">
+                        <i class="fa-solid fa-phone-slash text-xs"></i>
+                        <span>Terminate Call</span>
+                    </button>
+                </div>
+            </div>
+        `).join("");
+    }
+
+    function endCall(id) {
+        if (socket && socket.connected) {
+            socket.emit("adminEndCall", { callId: id });
+        } else {
+            calls = calls.filter(c => c.id !== id);
+            addLog(`Ended call session #${id}`);
+            showToast("Call terminated by admin", "info");
+            updateCounts();
+            renderCalls();
+        }
+    }
+
+    function renderStatuses() {
+        const grid = document.getElementById("statuses-grid");
+        const empty = document.getElementById("statuses-empty");
+
+        if (!statuses || statuses.length === 0) {
+            grid.innerHTML = "";
+            empty.classList.remove("hidden");
+            return;
+        }
+        empty.classList.add("hidden");
+
+        grid.innerHTML = statuses.map(s => `
+            <div class="glass-card rounded-2xl p-4 border border-dark-border flex flex-col justify-between space-y-3">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <div class="w-8 h-8 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold text-xs border border-purple-500/30">
+                            ${(s.name || s.user_id || 'A')[0].toUpperCase()}
+                        </div>
+                        <div>
+                            <div class="font-semibold text-white text-xs">${escapeHTML(s.name || s.user_id)}</div>
+                            <div class="text-[9px] text-slate-500">Live Status</div>
+                        </div>
+                    </div>
+                    <span class="px-2 py-0.5 rounded bg-purple-500/10 text-purple-400 text-[10px] font-mono border border-purple-500/20">
+                        ${s.type || 'TEXT'}
+                    </span>
+                </div>
+
+                <div class="p-3 bg-dark-bg/80 rounded-xl border border-dark-border text-xs text-slate-200">
+                    ${escapeHTML(s.text || "No status body content")}
+                </div>
+
+                <div class="flex items-center justify-between pt-1">
+                    <span class="text-[10px] text-slate-500"><i class="fa-solid fa-eye mr-1"></i> ${s.views || 0} views</span>
+                    <button onclick="deleteStatus(${s.id})"
+                        class="px-3 py-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs transition-colors">
+                        <i class="fa-solid fa-trash-can mr-1"></i> Delete
+                    </button>
+                </div>
+            </div>
+        `).join("");
+    }
+
+    function deleteStatus(id) {
+        if (socket && socket.connected) {
+            socket.emit("adminDeleteStatus", { statusId: id });
+        } else {
+            statuses = statuses.filter(s => s.id !== id);
+            addLog(`Deleted status post #${id}`);
+            showToast("Status deleted", "info");
+            updateCounts();
+            renderStatuses();
+        }
+    }
+
+    function renderMessageUsers() {
+        const search = (document.getElementById("message-user-search")?.value || "").toLowerCase();
+        const container = document.getElementById("message-users");
+
+        const list = users.filter(u =>
+            (u.name || "").toLowerCase().includes(search) ||
+            (u.userId || "").toLowerCase().includes(search)
+        );
+
+        if (list.length === 0) {
+            container.innerHTML = `<div class="p-5 text-center text-xs text-slate-500">No online users to message</div>`;
+            return;
+        }
+
+        container.innerHTML = list.map(u => `
+            <button onclick='selectMessageUser(${JSON.stringify(u)})'
+                class="w-full text-left p-3.5 hover:bg-dark-hover transition-colors flex items-center gap-3 group">
+                <div class="w-9 h-9 rounded-xl bg-dark-bg text-slate-300 font-bold flex items-center justify-center border border-dark-border group-hover:border-brand-500/50">
+                    ${(u.name || "A")[0].toUpperCase()}
+                </div>
+                <div class="min-w-0 flex-1">
+                    <div class="font-semibold text-xs text-white truncate">${escapeHTML(u.name || "Unknown")}</div>
+                    <div class="text-[10px] text-slate-500 font-mono truncate">${escapeHTML(u.userId)}</div>
+                </div>
+            </button>
+        `).join("");
+    }
+
+    function selectMessageUser(user) {
+        selectedMessageUser = user;
+        document.getElementById("message-header").innerHTML = `
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-brand-500/20 text-brand-400 border border-brand-500/30 flex items-center justify-center font-bold text-sm">
+                    ${(user.name || "A")[0].toUpperCase()}
+                </div>
+                <div>
+                    <div class="font-bold text-white text-sm">${escapeHTML(user.name || "Unknown User")}</div>
+                    <div class="text-[10px] text-slate-400 font-mono">${escapeHTML(user.userId)}</div>
+                </div>
+            </div>
+            <span class="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs">Direct Session</span>
+        `;
+
+        if (socket && socket.connected) {
+            socket.emit("adminMessages", { userId: user.userId });
+        } else {
+            adminMessages = [];
+            renderAdminMessages();
+        }
+    }
+
+    function renderAdminMessages() {
+        const el = document.getElementById("admin-messages");
+        if (!adminMessages || adminMessages.length === 0) {
+            el.innerHTML = `
+                <div class="h-full flex flex-col items-center justify-center text-slate-500 text-xs space-y-1">
+                    <i class="fa-solid fa-comments opacity-30 text-2xl mb-1"></i>
+                    <p class="text-slate-400 font-medium">No messages exchanged yet</p>
+                    <p class="text-slate-600">Type below to send an administrative advisory.</p>
+                </div>`;
+            return;
+        }
+
+        el.innerHTML = adminMessages.map(msg => {
+            const mine = msg.user_id === "admin";
+            return `
+                <div class="flex ${mine ? "justify-end" : "justify-start"}">
+                    <div class="max-w-[75%] p-3 rounded-2xl ${
+                        mine
+                        ? "bg-gradient-to-r from-brand-600 to-emerald-600 text-white shadow-md rounded-br-none"
+                        : "bg-dark-card border border-dark-border text-slate-200 rounded-bl-none"
+                    }">
+                        <div class="text-xs leading-relaxed">${escapeHTML(msg.text || "")}</div>
+                        <div class="text-[9px] opacity-60 mt-1 font-mono text-right">
+                            ${new Date(msg.created_at || Date.now()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join("");
+
+        el.scrollTop = el.scrollHeight;
+    }
+
+    function insertTemplate(text) {
+        const input = document.getElementById("admin-message-input");
+        if (input) {
+            input.value = text;
+            input.focus();
+        }
+    }
+
+    function sendAdminMessage() {
+        if (!selectedMessageUser) {
+            showToast("Please select an active user first!", "error");
+            return;
+        }
+
+        const input = document.getElementById("admin-message-input");
+        const text = input.value.trim();
+        if (!text) return;
+
+        if (socket && socket.connected) {
+            socket.emit("adminSendMessage", {
+                targetUserId: selectedMessageUser.userId,
+                text
+            });
+        } else {
+            const newMsg = { user_id: "admin", text, created_at: Date.now() };
+            adminMessages.push(newMsg);
+            renderAdminMessages();
+            showToast("Admin message dispatched", "success");
+        }
+
+        input.value = "";
+    }
+
+    function addLog(text) {
+        const el = document.getElementById("logs-list");
+        if (!el) return;
+
+        const row = document.createElement("div");
+        row.className = "flex items-start gap-2 hover:bg-dark-hover/40 p-1 rounded font-mono text-[11px]";
+        row.innerHTML = `<span class="text-slate-500">[${new Date().toLocaleTimeString()}]</span> <span>${escapeHTML(text)}</span>`;
+        
+        el.prepend(row);
+    }
+
+    function clearLogs() {
+        document.getElementById("logs-list").innerHTML = "";
+        showToast("Audit logs cleared", "info");
+    }
+
+    function copyLogs() {
+        const el = document.getElementById("logs-list");
+        const text = el.innerText;
+        
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+
+        showToast("Audit logs copied to clipboard", "success");
+    }
+
+    function showToast(message, type = "info") {
+        const container = document.getElementById("toast-container");
+        if (!container) return;
+
+        const toast = document.createElement("div");
+        
+        let bg = "bg-slate-800 text-white border-slate-700";
+        let icon = "fa-circle-info text-blue-400";
+
+        if (type === "success") {
+            bg = "bg-dark-card text-emerald-400 border-emerald-500/30";
+            icon = "fa-circle-check text-emerald-400";
+        } else if (type === "error") {
+            bg = "bg-dark-card text-red-400 border-red-500/30";
+            icon = "fa-triangle-exclamation text-red-400";
+        }
+
+        toast.className = `p-3.5 rounded-xl border ${bg} shadow-xl flex items-center gap-3 text-xs font-semibold pointer-events-auto transition-all transform translate-y-2 opacity-0 animate-in fade-in slide-in-from-bottom-2 duration-200`;
+        toast.innerHTML = `<i class="fa-solid ${icon} text-base"></i><span>${escapeHTML(message)}</span>`;
+
+        container.appendChild(toast);
+
+        setTimeout(() => {
+            toast.classList.add("opacity-0", "translate-y-2");
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    function escapeHTML(str) {
+        if (!str) return "";
+        return String(str)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;");
+    }
+
+    function updateSocketStatus(connected) {
+        const dot = document.getElementById("status-dot");
+        const pulse = document.getElementById("status-pulse");
+        const text = document.getElementById("socket-status-text");
+
+        if (connected) {
+            dot.className = "relative inline-flex rounded-full h-2 w-2 bg-emerald-500";
+            pulse.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75";
+            text.textContent = "Socket Connected";
+            text.className = "text-emerald-400 font-medium";
+        } else {
+            dot.className = "relative inline-flex rounded-full h-2 w-2 bg-amber-500";
+            pulse.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75";
+            text.textContent = "Listening Mode";
+            text.className = "text-amber-400 font-medium";
+        }
+    }
+
+    function startUptimeCounter() {
+        setInterval(() => {
+            uptimeSeconds++;
+            const hrs = Math.floor(uptimeSeconds / 3600).toString().padStart(2, '0');
+            const mins = Math.floor((uptimeSeconds % 3600) / 60).toString().padStart(2, '0');
+            const secs = (uptimeSeconds % 60).toString().padStart(2, '0');
+            const el = document.getElementById("uptime-display");
+            if (el) el.textContent = `Uptime: ${hrs}:${mins}:${secs}`;
+        }, 1000);
+    }
+</script>
+
+</body>
+</html>
