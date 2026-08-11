@@ -1,8 +1,11 @@
 /instance
 /__pycache__
 /public/firebase-admin.json
-/package-lock.json
-/server.log
+*.log
 /node_modules
 /chat.db
 /.env
+/public/statuses
+/public/statuses
+/public/dps
+/*.env

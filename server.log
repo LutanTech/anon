@@ -1,229 +1,62 @@
-[2026-08-09T13:20:39.988Z] [SERVER] ====================================================
-[2026-08-09T13:20:39.989Z] [SERVER] SERVER STARTUP INITIATED
-[2026-08-09T13:20:39.989Z] [SERVER] ====================================================
-[2026-08-09T13:20:39.991Z] [SERVER] [FCM DEBUG] Looking for Firebase service account file at: "D:\\PYTHON\\AnonChat 2\\public\\firebase-admin.json"
-[2026-08-09T13:20:40.071Z] [SERVER] [FCM SUCCESS] Firebase Admin SDK successfully initialized {"projectId":"goal-getter-fk4sa","clientEmail":"firebase-adminsdk-fbsvc@goal-getter-fk4sa.iam.gserviceaccount.com"}
-[2026-08-09T13:20:40.101Z] [SERVER] Connected to SQLite database at D:\PYTHON\AnonChat 2\chat.db
-[2026-08-09T13:20:40.111Z] [SERVER] Failed to initialize database schema {"error":"SQLITE_ERROR: near \";\": syntax error"}
-[2026-08-09T13:20:40.112Z] [STATUS CACHE] DB rows: 11
-[2026-08-09T13:20:40.112Z] [STATUS CACHE] Cached: 11
-[2026-08-09T13:20:40.112Z] [SERVER] [SERVER] Node server successfully started and listening on 0.0.0.0:9000
-[2026-08-09T13:20:40.357Z] [SERVER] [SERVER] Client socket connected {"sid":"qJWBaNh3dvf6gN2xAAAC"}
-[2026-08-09T13:20:40.360Z] [SERVER] [SERVER] Client socket connected {"sid":"s6l_stZr5UzEkKhlAAAD"}
-[2026-08-09T13:23:52.010Z] [SERVER] ====================================================
-[2026-08-09T13:23:52.011Z] [SERVER] SERVER STARTUP INITIATED
-[2026-08-09T13:23:52.011Z] [SERVER] ====================================================
-[2026-08-09T13:23:52.012Z] [SERVER] [FCM DEBUG] Looking for Firebase service account file at: "D:\\PYTHON\\AnonChat 2\\public\\firebase-admin.json"
-[2026-08-09T13:23:52.090Z] [SERVER] [FCM SUCCESS] Firebase Admin SDK successfully initialized {"projectId":"goal-getter-fk4sa","clientEmail":"firebase-adminsdk-fbsvc@goal-getter-fk4sa.iam.gserviceaccount.com"}
-[2026-08-09T13:23:52.119Z] [SERVER] Connected to SQLite database at D:\PYTHON\AnonChat 2\chat.db
-[2026-08-09T13:23:52.127Z] [SERVER] Failed to initialize database schema {"error":"SQLITE_ERROR: near \";\": syntax error"}
-[2026-08-09T13:23:52.128Z] [STATUS CACHE] DB rows: 11
-[2026-08-09T13:23:52.128Z] [STATUS CACHE] Cached: 11
-[2026-08-09T13:23:52.128Z] [SERVER] [SERVER] Node server successfully started and listening on 0.0.0.0:9000
-[2026-08-09T13:23:52.342Z] [SERVER] [SERVER] Client socket connected {"sid":"Kf2jolIh-aMF3gugAAAC"}
-[2026-08-09T13:23:52.345Z] [SERVER] [SERVER] Client socket connected {"sid":"FsvsTKEKrE71moGRAAAD"}
-[2026-08-09T13:24:50.955Z] [SERVER] ====================================================
-[2026-08-09T13:24:50.956Z] [SERVER] SERVER STARTUP INITIATED
-[2026-08-09T13:24:50.956Z] [SERVER] ====================================================
-[2026-08-09T13:24:50.957Z] [SERVER] [FCM DEBUG] Looking for Firebase service account file at: "D:\\PYTHON\\AnonChat 2\\public\\firebase-admin.json"
-[2026-08-09T13:24:51.034Z] [SERVER] [FCM SUCCESS] Firebase Admin SDK successfully initialized {"projectId":"goal-getter-fk4sa","clientEmail":"firebase-adminsdk-fbsvc@goal-getter-fk4sa.iam.gserviceaccount.com"}
-[2026-08-09T13:24:51.066Z] [SERVER] Connected to SQLite database at D:\PYTHON\AnonChat 2\chat.db
-[2026-08-09T13:24:51.088Z] [SERVER] [SERVER] Client socket connected {"sid":"GU26JegayqErSw2VAAAC"}
-[2026-08-09T13:24:51.092Z] [SERVER] [SERVER] Client socket connected {"sid":"iWFMoa20LliTyiTZAAAD"}
-[2026-08-09T13:24:51.099Z] [SERVER] Failed to initialize database schema {"error":"SQLITE_ERROR: near \";\": syntax error"}
-[2026-08-09T13:24:51.103Z] [STATUS CACHE] DB rows: 11
-[2026-08-09T13:24:51.103Z] [STATUS CACHE] Cached: 11 {}
-[2026-08-09T13:24:51.103Z] [SERVER] [SERVER] Node server successfully started and listening on 0.0.0.0:9000
-[2026-08-09T13:26:56.652Z] [SERVER] ====================================================
-[2026-08-09T13:26:56.653Z] [SERVER] SERVER STARTUP INITIATED
-[2026-08-09T13:26:56.653Z] [SERVER] ====================================================
-[2026-08-09T13:26:56.655Z] [SERVER] [FCM DEBUG] Looking for Firebase service account file at: "D:\\PYTHON\\AnonChat 2\\public\\firebase-admin.json"
-[2026-08-09T13:26:56.756Z] [SERVER] [FCM SUCCESS] Firebase Admin SDK successfully initialized {"projectId":"goal-getter-fk4sa","clientEmail":"firebase-adminsdk-fbsvc@goal-getter-fk4sa.iam.gserviceaccount.com"}
-[2026-08-09T13:26:56.786Z] [SERVER] Connected to SQLite database at D:\PYTHON\AnonChat 2\chat.db
-[2026-08-09T13:26:56.796Z] [SERVER] Failed to initialize database schema {"error":"SQLITE_ERROR: near \";\": syntax error"}
-[2026-08-09T13:26:56.796Z] [STATUS CACHE] DB rows: 11
-[2026-08-09T13:26:56.796Z] [SERVER] [SERVER] Node server successfully started and listening on 0.0.0.0:9000
-[2026-08-09T13:26:57.552Z] [SERVER] [SERVER] Client socket connected {"sid":"gamLz61hVVw9NutFAAAB"}
-[2026-08-09T13:26:57.565Z] [SERVER] [SERVER] Client socket connected {"sid":"SY7wXGcqEvIyml7VAAAD"}
-[2026-08-09T13:28:19.709Z] [SERVER] [SERVER] Client socket connected {"sid":"lxaY0RoFGNftyQqaAAAF"}
-[2026-08-09T13:30:18.715Z] [SERVER] [SERVER] Client socket connected {"sid":"vUp-VsXc89wpqgihAAAH"}
-[2026-08-09T13:30:24.130Z] [SERVER] [SERVER] Client socket connected {"sid":"0VQ8boxn71qyqxehAAAJ"}
-[2026-08-09T13:30:26.109Z] ____________pre  {}
-[2026-08-09T13:30:26.109Z] ____________post  {}
-[2026-08-09T13:31:03.093Z] ____________pre  {}
-[2026-08-09T13:31:03.093Z] ____________post  {}
-[2026-08-09T13:31:32.464Z] [SERVER] [SERVER] Client socket connected {"sid":"CNhXth0Ng5Brq0bqAAAL"}
-[2026-08-09T13:33:17.244Z] [SERVER] [SERVER] Client socket connected {"sid":"zuCKvma6aYmweUj_AAAN"}
-[2026-08-09T13:33:26.615Z] [SERVER] [SERVER] Client socket connected {"sid":"aHOuQiSGWc5EdfWgAAAP"}
-[2026-08-09T13:33:28.980Z] [SERVER] [SERVER] Client socket connected {"sid":"WkhfJg4fNBtiTGzAAAAR"}
-[2026-08-09T13:33:31.456Z] [SERVER] [SERVER] Client socket connected {"sid":"V12gHiV0WjMprMhmAAAT"}
-[2026-08-09T13:39:23.616Z] [SERVER] [SERVER] Client socket connected {"sid":"TWej_k_L3YYjTqSFAAAV"}
-[2026-08-09T13:40:34.897Z] ____________pre  {}
-[2026-08-09T13:40:34.897Z] ____________post  {}
-[2026-08-09T13:40:39.913Z] ____________pre  {}
-[2026-08-09T13:40:39.913Z] ____________post  {}
-[2026-08-09T13:45:49.801Z] [SERVER] ====================================================
-[2026-08-09T13:45:49.802Z] [SERVER] SERVER STARTUP INITIATED
-[2026-08-09T13:45:49.802Z] [SERVER] ====================================================
-[2026-08-09T13:45:49.803Z] [SERVER] [FCM DEBUG] Looking for Firebase service account file at: "D:\\PYTHON\\AnonChat 2\\public\\firebase-admin.json"
-[2026-08-09T13:45:49.886Z] [SERVER] [FCM SUCCESS] Firebase Admin SDK successfully initialized {"projectId":"goal-getter-fk4sa","clientEmail":"firebase-adminsdk-fbsvc@goal-getter-fk4sa.iam.gserviceaccount.com"}
-[2026-08-09T13:45:49.915Z] [SERVER] Connected to SQLite database at D:\PYTHON\AnonChat 2\chat.db
-[2026-08-09T13:45:49.924Z] [SERVER] Failed to initialize database schema {"error":"SQLITE_ERROR: near \";\": syntax error"}
-[2026-08-09T13:45:49.925Z] [STATUS CACHE] DB rows: 11
-[2026-08-09T13:45:49.925Z] [SERVER] [SERVER] Node server successfully started and listening on 0.0.0.0:9000
-[2026-08-09T13:45:50.088Z] [SERVER] [SERVER] Client socket connected {"sid":"-LzKxdrONh4HRdCUAAAE"}
-[2026-08-09T13:45:50.091Z] [SERVER] [SERVER] Client socket connected {"sid":"NIEOjLjgtYciM7axAAAF"}
-[2026-08-09T13:45:50.099Z] [SERVER] [SERVER] Client socket connected {"sid":"VvusMiCXc_3wk6U4AAAG"}
-[2026-08-09T13:45:50.102Z] [SERVER] [SERVER] Client socket connected {"sid":"C5p8bPHChSck3njIAAAH"}
-[2026-08-09T13:47:04.148Z] [SERVER] [SERVER] Client socket connected {"sid":"ZDfbrKs2aIu7-HH8AAAJ"}
-[2026-08-09T13:47:11.479Z] [SERVER] [SERVER] Client socket connected {"sid":"tpwdcWEH1AkreobYAAAL"}
-[2026-08-09T13:47:16.091Z] [SERVER] [SERVER] Client socket connected {"sid":"582lLbncC24LDXUSAAAN"}
-[2026-08-09T13:48:00.283Z] [SERVER] [SERVER] Client socket connected {"sid":"ByHCs1zu9wvUDMO-AAAP"}
-[2026-08-09T13:48:02.875Z] [SERVER] [SERVER] Client socket connected {"sid":"fQa9NLA1Yjj2SizyAAAR"}
-[2026-08-09T13:59:21.667Z] [SERVER] ====================================================
-[2026-08-09T13:59:21.668Z] [SERVER] SERVER STARTUP INITIATED
-[2026-08-09T13:59:21.669Z] [SERVER] ====================================================
-[2026-08-09T13:59:21.670Z] [SERVER] [FCM DEBUG] Looking for Firebase service account file at: "D:\\PYTHON\\AnonChat 2\\public\\firebase-admin.json"
-[2026-08-09T13:59:21.752Z] [SERVER] [FCM SUCCESS] Firebase Admin SDK successfully initialized {"projectId":"goal-getter-fk4sa","clientEmail":"firebase-adminsdk-fbsvc@goal-getter-fk4sa.iam.gserviceaccount.com"}
-[2026-08-09T13:59:21.781Z] [SERVER] Connected to SQLite database at D:\PYTHON\AnonChat 2\chat.db
-[2026-08-09T13:59:21.790Z] [SERVER] Failed to initialize database schema {"error":"SQLITE_ERROR: near \";\": syntax error"}
-[2026-08-09T13:59:21.791Z] [STATUS CACHE] DB rows: 11
-[2026-08-09T13:59:21.791Z] [SERVER] [SERVER] Node server successfully started and listening on 0.0.0.0:9000
-[2026-08-09T13:59:21.838Z] [SERVER] [SERVER] Client socket connected {"sid":"dEZabVnD7M8vPqRfAAAB"}
-[2026-08-09T13:59:21.850Z] [SERVER] [SERVER] Client socket connected {"sid":"6JMDVaXExSc_Md4PAAAE"}
-[2026-08-09T13:59:21.858Z] [SERVER] [SERVER] Client socket connected {"sid":"LoMr5B71wXfHpgJPAAAF"}
-[2026-08-09T13:59:25.249Z] [SERVER] [SERVER] Client socket connected {"sid":"vhzWjeKCPmcZ_rUKAAAH"}
-[2026-08-09T13:59:35.187Z] [SERVER] [SERVER] Client socket connected {"sid":"BNYiM-n_JwmPDvzxAAAJ"}
-[2026-08-09T13:59:37.606Z] [SERVER] [SERVER] Client socket connected {"sid":"__pKQz6sjpOH4_emAAAL"}
-[2026-08-09T13:59:52.752Z] [SERVER] [SERVER] Client socket connected {"sid":"RrP4zNUc5Ju6M9AsAAAN"}
-[2026-08-09T13:59:56.615Z] [STATUS VIEW] Cached: 33 [{"userId":"usr_ogx128y","name":"Lutan 4","viewedAt":1786282226109,"statusId":33},{"userId":"usr_q7xtgp9","name":"Lutan Tech ✨","viewedAt":1786282263093,"statusId":33},{"userId":"usr_frprygy","name":"Dolphin","viewedAt":1786282839913,"statusId":33},{"userId":"usr_631240","name":"Falcon-6321","viewedAt":1786283996615,"statusId":33}]
-[2026-08-09T13:59:58.162Z] [STATUS VIEW] Cached: 31 [{"userId":"usr_q7xtgp9","name":"Lutan Tech ✨","viewedAt":1786254049317,"statusId":31},{"userId":"usr_ogx128y","name":"Lutan 4","viewedAt":1786254054064,"statusId":31},{"userId":"usr_frprygy","name":"Dolphin","viewedAt":1786282834897,"statusId":31},{"userId":"usr_631240","name":"Falcon-6321","viewedAt":1786283998162,"statusId":31}]
-[2026-08-09T14:00:03.039Z] [STATUS VIEW] Cached: 32 [{"userId":"usr_q7xtgp9","name":"Lutan Tech ✨","viewedAt":1786254126412,"statusId":32},{"userId":"usr_402761","name":"George","viewedAt":1786254238771,"statusId":32},{"userId":"usr_frprygy","name":"Dolphin","viewedAt":1786283286465,"statusId":32},{"userId":"usr_631240","name":"Falcon-6321","viewedAt":1786284003039,"statusId":32}]
-[2026-08-09T14:00:04.195Z] [STATUS VIEW] Cached: 29 [{"userId":"usr_q7xtgp9","name":"Lutan Tech ✨","viewedAt":1786249783875,"statusId":29},{"userId":"usr_402761","name":"George","viewedAt":1786253174178,"statusId":29},{"userId":"usr_frprygy","name":"Dolphin","viewedAt":1786283289303,"statusId":29},{"userId":"usr_631240","name":"Falcon-6321","viewedAt":1786284004195,"statusId":29}]
-[2026-08-09T14:00:08.630Z] [STATUS VIEW] Cached: 30 [{"userId":"usr_402761","name":"George","viewedAt":1786253907526,"statusId":30},{"userId":"usr_ogx128y","name":"Lutan 4","viewedAt":1786254509521,"statusId":30},{"userId":"usr_frprygy","name":"Dolphin","viewedAt":1786283292827,"statusId":30},{"userId":"usr_631240","name":"Falcon-6321","viewedAt":1786284008630,"statusId":30}]
-[2026-08-09T14:00:09.664Z] [STATUS VIEW] Cached: 28 [{"userId":"usr_ogx128y","name":"Lutan 4","viewedAt":1786246120349,"statusId":28},{"userId":"usr_402761","name":"George","viewedAt":1786253149623,"statusId":28},{"userId":"usr_frprygy","name":"Dolphin","viewedAt":1786283293895,"statusId":28},{"userId":"usr_631240","name":"Falcon-6321","viewedAt":1786284009664,"statusId":28}]
-[2026-08-09T14:00:12.181Z] [STATUS VIEW] Cached: 27 [{"userId":"usr_ogx128y","name":"Lutan 4","viewedAt":1786246128915,"statusId":27},{"userId":"usr_402761","name":"George","viewedAt":1786253147116,"statusId":27},{"userId":"usr_frprygy","name":"Dolphin","viewedAt":1786283296093,"statusId":27},{"userId":"usr_631240","name":"Falcon-6321","viewedAt":1786284012181,"statusId":27}]
-[2026-08-09T14:00:13.325Z] [STATUS VIEW] Cached: 26 [{"userId":"usr_ogx128y","name":"Lutan 4","viewedAt":1786246127474,"statusId":26},{"userId":"usr_402761","name":"George","viewedAt":1786253142916,"statusId":26},{"userId":"usr_frprygy","name":"Dolphin","viewedAt":1786283297617,"statusId":26},{"userId":"usr_631240","name":"Falcon-6321","viewedAt":1786284013325,"statusId":26}]
-[2026-08-09T14:00:15.268Z] [STATUS VIEW] Cached: 6 [{"userId":"usr_q7xtgp9","name":"Lutan Tech ✨","viewedAt":1786241740628,"statusId":6},{"userId":"usr_ogx128y","name":"Lutan 4","viewedAt":1786241756957,"statusId":6},{"userId":"usr_402761","name":"George","viewedAt":1786253322943,"statusId":6},{"userId":"usr_631240","name":"Falcon-6321","viewedAt":1786284015268,"statusId":6}]
-[2026-08-09T14:00:18.619Z] [STATUS VIEW] Cached: 3 [{"userId":"usr_ogx128y","name":"Lutan 4","viewedAt":1786238794633,"statusId":3},{"userId":"usr_q7xtgp9","name":"Lutan Tech ✨","viewedAt":1786241745376,"statusId":3},{"userId":"usr_402761","name":"George","viewedAt":1786253327261,"statusId":3},{"userId":"usr_frprygy","name":"Dolphin","viewedAt":1786283300406,"statusId":3},{"userId":"usr_631240","name":"Falcon-6321","viewedAt":1786284018619,"statusId":3}]
-[2026-08-09T14:00:19.972Z] [STATUS VIEW] Cached: 2 [{"userId":"usr_ogx128y","name":"Lutan 4","viewedAt":1786238823189,"statusId":2},{"userId":"usr_q7xtgp9","name":"Lutan Tech ✨","viewedAt":1786241743954,"statusId":2},{"userId":"usr_402761","name":"George","viewedAt":1786253325523,"statusId":2},{"userId":"usr_frprygy","name":"Dolphin","viewedAt":1786283305786,"statusId":2},{"userId":"usr_631240","name":"Falcon-6321","viewedAt":1786284019972,"statusId":2}]
-[2026-08-09T14:00:55.492Z] [STATUS VIEW] Cached: 34 [{"userId":"usr_ogx128y","name":"Lutan 4","viewedAt":1786284055492,"statusId":34}]
-[2026-08-09T14:01:13.692Z] [SERVER] [SERVER] Client socket connected {"sid":"LsZVyGh247zp7qJdAAAP"}
-[2026-08-09T14:52:17.616Z] [SERVER] [SERVER] Client socket connected {"sid":"NMUVcQVCbIYMl0kzAAAR"}
-[2026-08-09T14:55:37.570Z] [SERVER] [SERVER] Client socket connected {"sid":"APxODnPvphPQABjaAAAT"}
-[2026-08-09T15:05:45.225Z] [SERVER] [SERVER] Client socket connected {"sid":"bequPHvAxuBrw_UqAAAV"}
-[2026-08-09T15:06:33.390Z] [SERVER] [SERVER] Client socket connected {"sid":"jxx9GdbmCGhfnH1nAAAX"}
-[2026-08-09T15:07:20.510Z] [SERVER] [SERVER] Client socket connected {"sid":"DgSGUAcvPLlCnX9kAAAZ"}
-[2026-08-09T15:07:39.583Z] [SERVER] [SERVER] Client socket connected {"sid":"QhLptYZWC1uwtZOLAAAb"}
-[2026-08-09T15:07:50.301Z] deleted 33
-[2026-08-09T15:08:11.629Z] [STATUS VIEW] Cached: 34 [{"userId":"usr_ogx128y","name":"Lutan 4","viewedAt":1786284055492,"statusId":34},{"userId":"usr_402761","name":"George","viewedAt":1786288091629,"statusId":34}]
-[2026-08-09T15:18:27.426Z] [SERVER] [SERVER] Client socket connected {"sid":"SLkQpjHaTmxQHAqlAAAd"}
-[2026-08-09T15:20:00.781Z] [SERVER] [SERVER] Client socket connected {"sid":"uR-OhvB_0Sy-n-RfAAAf"}
-[2026-08-09T15:20:37.954Z] deleted 35
-[2026-08-09T15:24:23.471Z] [SERVER] [SERVER] Client socket connected {"sid":"q9uMujBfmjVlkKBmAAAh"}
-[2026-08-09T15:29:53.521Z] [SERVER] [SERVER] Client socket connected {"sid":"zWxnMI-vkYb_PxfGAAAj"}
-[2026-08-09T15:34:23.346Z] [SERVER] [SERVER] Client socket connected {"sid":"F9B5zPUEhLo5ypE-AAAl"}
-[2026-08-09T15:38:14.876Z] [SERVER] [SERVER] Client socket connected {"sid":"H6Rvz4-6ObE-Ye8sAAAn"}
-[2026-08-09T15:38:55.898Z] deleted 36
-[2026-08-09T15:41:55.103Z] [SERVER] [SERVER] Client socket connected {"sid":"nZC8w7FgjZ4YyVcZAAAp"}
-[2026-08-09T15:42:26.929Z] deleted 37
-[2026-08-09T15:44:12.662Z] [SERVER] [SERVER] Client socket connected {"sid":"DAaizQisgH4NnnDRAAAr"}
-[2026-08-09T15:49:13.512Z] [SERVER] [SERVER] Client socket connected {"sid":"MZSKSYDbglXku6XjAAAt"}
-[2026-08-09T15:50:25.226Z] deleted 39
-[2026-08-09T15:51:55.017Z] [SERVER] [SERVER] Client socket connected {"sid":"wk6eIQRRQHWxLKZ_AAAv"}
-[2026-08-09T15:52:19.628Z] [SERVER] [SERVER] Client socket connected {"sid":"X7xS3p7DCldBIHjLAAAx"}
-[2026-08-09T15:55:30.604Z] [SERVER] [SERVER] Client socket connected {"sid":"A9EkxphpBjQxkyaNAAAz"}
-[2026-08-09T15:56:34.973Z] deleted 40
-[2026-08-09T15:58:52.348Z] deleted 42
-[2026-08-09T15:58:56.351Z] [SERVER] [SERVER] Client socket connected {"sid":"b8_QfWpyntt4vWlMAAA1"}
-[2026-08-09T16:01:21.055Z] [SERVER] [SERVER] Client socket connected {"sid":"ovvkZKnxNs2f1X-0AAA3"}
-[2026-08-09T16:01:53.557Z] deleted 43
-[2026-08-09T16:02:11.155Z] deleted 44
-[2026-08-09T16:03:32.479Z] [SERVER] [SERVER] Client socket connected {"sid":"S3hQhp43b6rCK_qYAAA5"}
-[2026-08-09T16:03:56.489Z] [SERVER] [SERVER] Client socket connected {"sid":"o-cHLYM2KP3xeosyAAA7"}
-[2026-08-09T16:04:35.046Z] deleted 45
-[2026-08-09T16:10:36.125Z] [SERVER] [SERVER] Client socket connected {"sid":"oxT1dRH1IN_kQhnfAAA9"}
-[2026-08-09T16:19:16.989Z] [SERVER] [SERVER] Client socket connected {"sid":"qrSCyHP6VqbtJgqQAAA_"}
-[2026-08-09T16:19:35.873Z] [SERVER] [SERVER] Client socket connected {"sid":"Kff3kONFNrzg4AuFAABB"}
-[2026-08-09T16:23:40.314Z] [SERVER] [SERVER] Client socket connected {"sid":"oITwAukgRUIQVsSyAABD"}
-[2026-08-09T16:24:12.894Z] [SERVER] [SERVER] Client socket connected {"sid":"J69o6b-MJaZ4qsSGAABF"}
-[2026-08-09T16:24:29.482Z] [SERVER] [SERVER] Client socket connected {"sid":"goPggjmYgOJsqO7SAABH"}
-[2026-08-09T16:24:51.655Z] [SERVER] [SERVER] Client socket connected {"sid":"3FjsKrIlD2oYzRtyAABJ"}
-[2026-08-09T17:17:54.707Z] [SERVER] ====================================================
-[2026-08-09T17:17:54.708Z] [SERVER] SERVER STARTUP INITIATED
-[2026-08-09T17:17:54.708Z] [SERVER] ====================================================
-[2026-08-09T17:17:54.709Z] [SERVER] [FCM DEBUG] Looking for Firebase service account file at: "D:\\PYTHON\\AnonChat 2\\public\\firebase-admin.json"
-[2026-08-09T17:17:54.792Z] [SERVER] [FCM SUCCESS] Firebase Admin SDK successfully initialized {"projectId":"goal-getter-fk4sa","clientEmail":"firebase-adminsdk-fbsvc@goal-getter-fk4sa.iam.gserviceaccount.com"}
-[2026-08-09T17:17:54.822Z] [SERVER] Connected to SQLite database at D:\PYTHON\AnonChat 2\chat.db
-[2026-08-09T17:17:54.834Z] [SERVER] Failed to initialize database schema {"error":"SQLITE_ERROR: near \";\": syntax error"}
-[2026-08-09T17:17:54.835Z] [STATUS CACHE] DB rows: 15
-[2026-08-09T17:17:54.835Z] [SERVER] [SERVER] Node server successfully started and listening on 0.0.0.0:9000
-[2026-08-09T17:17:58.574Z] [SERVER] [SERVER] Client socket connected {"sid":"F6wCk3_ONE1oF_LIAAAC"}
-[2026-08-09T17:17:58.759Z] [SERVER] [SERVER] Client socket connected {"sid":"2f5WTrW8iRrVQoa1AAAD"}
-[2026-08-09T17:18:00.313Z] [SERVER] [SERVER] Client socket connected {"sid":"k_lNG7JUCzcfFz-HAAAF"}
-[2026-08-09T17:19:18.114Z] [SERVER] ====================================================
-[2026-08-09T17:19:18.116Z] [SERVER] SERVER STARTUP INITIATED
-[2026-08-09T17:19:18.116Z] [SERVER] ====================================================
-[2026-08-09T17:19:18.118Z] [SERVER] [FCM DEBUG] Looking for Firebase service account file at: "D:\\PYTHON\\AnonChat 2\\public\\firebase-admin.json"
-[2026-08-09T17:19:18.203Z] [SERVER] [FCM SUCCESS] Firebase Admin SDK successfully initialized {"projectId":"goal-getter-fk4sa","clientEmail":"firebase-adminsdk-fbsvc@goal-getter-fk4sa.iam.gserviceaccount.com"}
-[2026-08-09T17:19:18.231Z] [SERVER] Connected to SQLite database at D:\PYTHON\AnonChat 2\chat.db
-[2026-08-09T17:19:18.240Z] [SERVER] Failed to initialize database schema {"error":"SQLITE_ERROR: near \";\": syntax error"}
-[2026-08-09T17:19:18.241Z] [STATUS CACHE] DB rows: 15
-[2026-08-09T17:19:18.241Z] [SERVER] [SERVER] Node server successfully started and listening on 0.0.0.0:9000
-[2026-08-09T17:19:18.341Z] [SERVER] [SERVER] Client socket connected {"sid":"Bwt4F8xPVax8qPgxAAAB"}
-[2026-08-09T17:19:18.562Z] [SERVER] [SERVER] Client socket connected {"sid":"-d8WkRDlAgGRIj5fAAAE"}
-[2026-08-09T17:19:18.874Z] [SERVER] [SERVER] Client socket connected {"sid":"pL1JTZyUhOVuHTm0AAAF"}
-[2026-08-09T17:19:30.255Z] [SERVER] [SERVER] Client socket connected {"sid":"NFdGzyxzH-gG_NTEAAAH"}
-[2026-08-09T17:30:27.530Z] [SERVER] ====================================================
-[2026-08-09T17:30:27.531Z] [SERVER] SERVER STARTUP INITIATED
-[2026-08-09T17:30:27.531Z] [SERVER] ====================================================
-[2026-08-09T17:30:27.532Z] [SERVER] [FCM DEBUG] Looking for Firebase service account file at: "D:\\PYTHON\\AnonChat 2\\public\\firebase-admin.json"
-[2026-08-09T17:30:27.612Z] [SERVER] [FCM SUCCESS] Firebase Admin SDK successfully initialized {"projectId":"goal-getter-fk4sa","clientEmail":"firebase-adminsdk-fbsvc@goal-getter-fk4sa.iam.gserviceaccount.com"}
-[2026-08-09T17:30:27.641Z] [SERVER] Connected to SQLite database at D:\PYTHON\AnonChat 2\chat.db
-[2026-08-09T17:30:27.650Z] [STATUS CACHE] DB rows: 15
-[2026-08-09T17:30:27.651Z] [SERVER] [SERVER] Node server successfully started and listening on 0.0.0.0:9000
-[2026-08-09T17:30:27.657Z] [SERVER] Database schema verified successfully
-[2026-08-09T17:30:29.693Z] [SERVER] [SERVER] Client socket connected {"sid":"feuWtl1LQ2t1xKSvAAAB"}
-[2026-08-09T17:30:32.551Z] [SERVER] [SERVER] Client socket connected {"sid":"d7AUdfEa9NcJDBp3AAAD"}
-[2026-08-09T17:30:41.651Z] [SERVER] [SERVER] Client socket connected {"sid":"jqXuwhLZTcsgUG9uAAAF"}
-[2026-08-09T17:30:51.375Z] [SERVER] [SERVER] Client socket connected {"sid":"qNx2C_KoZ5ClRt9EAAAH"}
-[2026-08-09T17:31:01.343Z] [SERVER] [SERVER] Client socket connected {"sid":"0ea7J3wZeIA3T3uhAAAJ"}
-[2026-08-09T17:32:07.069Z] [SERVER] [SERVER] Client socket connected {"sid":"cVQtU3qGLjvstw16AAAL"}
-[2026-08-09T17:32:20.064Z] [SERVER] [SERVER] Client socket connected {"sid":"nS2g8mhW6CmCulKUAAAN"}
-[2026-08-09T17:33:32.800Z] [SERVER] [SERVER] Client socket connected {"sid":"CnG_tZMytOHTMCPpAAAP"}
-[2026-08-09T17:34:31.826Z] [SERVER] ====================================================
-[2026-08-09T17:34:31.827Z] [SERVER] SERVER STARTUP INITIATED
-[2026-08-09T17:34:31.827Z] [SERVER] ====================================================
-[2026-08-09T17:34:31.828Z] [SERVER] [FCM DEBUG] Looking for Firebase service account file at: "D:\\PYTHON\\AnonChat 2\\public\\firebase-admin.json"
-[2026-08-09T17:34:31.909Z] [SERVER] [FCM SUCCESS] Firebase Admin SDK successfully initialized {"projectId":"goal-getter-fk4sa","clientEmail":"firebase-adminsdk-fbsvc@goal-getter-fk4sa.iam.gserviceaccount.com"}
-[2026-08-09T17:34:31.938Z] [SERVER] Connected to SQLite database at D:\PYTHON\AnonChat 2\chat.db
-[2026-08-09T17:34:31.948Z] [STATUS CACHE] DB rows: 15
-[2026-08-09T17:34:31.948Z] [SERVER] [SERVER] Node server successfully started and listening on 0.0.0.0:9000
-[2026-08-09T17:34:31.949Z] [SERVER] Database schema verified successfully
-[2026-08-09T17:34:32.075Z] [SERVER] [SERVER] Client socket connected {"sid":"09QfT6mGYmvisJsyAAAB"}
-[2026-08-09T17:34:32.259Z] [SERVER] [SERVER] Client socket connected {"sid":"iSIX7OvpZlP4g3vCAAAD"}
-[2026-08-09T17:34:32.560Z] [SERVER] [SERVER] Client socket connected {"sid":"MJIfBfVsnQ6d4_O3AAAF"}
-[2026-08-09T17:36:30.453Z] [SERVER] [SERVER] Client socket connected {"sid":"canV8gX3s5iZPVJ6AAAI"}
-[2026-08-09T17:37:26.606Z] [SERVER] [SERVER] Client socket connected {"sid":"jkXBr7aBrIQrpMW2AAAK"}
-[2026-08-09T17:44:54.810Z] [SERVER] [SERVER] Client socket connected {"sid":"zR2jXG6zmduClyMJAAAM"}
-[2026-08-09T17:48:03.221Z] [SERVER] [SERVER] Client socket connected {"sid":"wUR7UGAif__ug40dAAAO"}
-[2026-08-09T17:48:09.430Z] [SERVER] [SERVER] Client socket connected {"sid":"udGG3aoYX72XcC84AAAQ"}
-[2026-08-09T17:48:33.812Z] [SERVER] [SERVER] Client socket connected {"sid":"gucyUpj0wgFF6TIDAAAS"}
-[2026-08-09T17:49:14.562Z] [SERVER] [SERVER] Client socket connected {"sid":"3kP_t_qZHpbUzgawAAAU"}
-[2026-08-09T17:50:58.916Z] [SERVER] ====================================================
-[2026-08-09T17:50:58.918Z] [SERVER] SERVER STARTUP INITIATED
-[2026-08-09T17:50:58.918Z] [SERVER] ====================================================
-[2026-08-09T17:50:58.919Z] [SERVER] [FCM DEBUG] Looking for Firebase service account file at: "D:\\PYTHON\\AnonChat 2\\public\\firebase-admin.json"
-[2026-08-09T17:50:59.005Z] [SERVER] [FCM SUCCESS] Firebase Admin SDK successfully initialized {"projectId":"goal-getter-fk4sa","clientEmail":"firebase-adminsdk-fbsvc@goal-getter-fk4sa.iam.gserviceaccount.com"}
-[2026-08-09T17:50:59.033Z] [SERVER] Connected to SQLite database at D:\PYTHON\AnonChat 2\chat.db
-[2026-08-09T17:50:59.043Z] [STATUS CACHE] DB rows: 14
-[2026-08-09T17:50:59.043Z] [SERVER] [SERVER] Node server successfully started and listening on 0.0.0.0:9000
-[2026-08-09T17:50:59.044Z] [SERVER] Database schema verified successfully
-[2026-08-09T17:50:59.571Z] [SERVER] [SERVER] Client socket connected {"sid":"STDfECqPu7jBapjFAAAB"}
-[2026-08-09T17:50:59.584Z] [SERVER] [SERVER] Client socket connected {"sid":"t88Th5liqZ9uaS_jAAAE"}
-[2026-08-09T17:50:59.586Z] [SERVER] [SERVER] Client socket connected {"sid":"A1A_SWCl8D6u2I1iAAAF"}
-[2026-08-09T17:51:24.144Z] [SERVER] [SERVER] Client socket connected {"sid":"8GlMsal9M1Q5ILAXAAAH"}
-[2026-08-09T17:51:44.728Z] [SERVER] [SERVER] Client socket connected {"sid":"SwhEiRwh-GBBBBQvAAAJ"}
-[2026-08-09T20:11:38.920Z] [SERVER] [SERVER] Client socket connected {"sid":"4PJTotozKOsW1OqzAAAL"}
-[2026-08-09T20:13:32.265Z] [SERVER] [SERVER] Client socket connected {"sid":"LHb4VbgswN7oILOYAAAN"}
-[2026-08-09T20:14:13.046Z] [SERVER] [SERVER] Client socket connected {"sid":"K8g8N6eDi-n9LsnLAAAP"}
+[2026-08-11T08:44:02.600Z] [SERVER] ====================================================
+[2026-08-11T08:44:02.602Z] [SERVER] SERVER STARTUP INITIATED
+[2026-08-11T08:44:02.602Z] [SERVER] ====================================================
+[2026-08-11T08:44:02.995Z] [SERVER] [FCM SUCCESS] Firebase Admin SDK successfully initialized
+[2026-08-11T08:44:03.036Z] [SERVER] Connected to SQLite database
+[2026-08-11T08:44:03.046Z] [SERVER] Failed to initialize database schema {"error":"SQLITE_ERROR: near \"name\": syntax error"}
+[2026-08-11T08:44:03.047Z] [SERVER] Failed to initialize database schema {"error":"SQLITE_ERROR: near \"name\": syntax error"}
+[2026-08-11T08:45:19.242Z] [SERVER] ====================================================
+[2026-08-11T08:45:19.243Z] [SERVER] SERVER STARTUP INITIATED
+[2026-08-11T08:45:19.243Z] [SERVER] ====================================================
+[2026-08-11T08:45:19.332Z] [SERVER] [FCM SUCCESS] Firebase Admin SDK successfully initialized
+[2026-08-11T08:45:19.363Z] [SERVER] Connected to SQLite database
+[2026-08-11T08:45:19.370Z] [SERVER] Failed to initialize database schema {"error":"SQLITE_ERROR: near \"name\": syntax error"}
+[2026-08-11T08:45:19.370Z] [SERVER] Failed to initialize database schema {"error":"SQLITE_ERROR: near \"name\": syntax error"}
+[2026-08-11T08:45:43.971Z] [SERVER] ====================================================
+[2026-08-11T08:45:43.972Z] [SERVER] SERVER STARTUP INITIATED
+[2026-08-11T08:45:43.972Z] [SERVER] ====================================================
+[2026-08-11T08:45:44.082Z] [SERVER] [FCM SUCCESS] Firebase Admin SDK successfully initialized
+[2026-08-11T08:45:44.122Z] [SERVER] Connected to SQLite database
+[2026-08-11T08:45:44.133Z] [SERVER] Failed to initialize database schema {"error":"SQLITE_ERROR: near \"name\": syntax error"}
+[2026-08-11T08:45:44.133Z] [SERVER] Failed to initialize database schema {"error":"SQLITE_ERROR: near \"name\": syntax error"}
+[2026-08-11T08:46:20.033Z] [SERVER] ====================================================
+[2026-08-11T08:46:20.035Z] [SERVER] SERVER STARTUP INITIATED
+[2026-08-11T08:46:20.035Z] [SERVER] ====================================================
+[2026-08-11T08:46:20.115Z] [SERVER] [FCM SUCCESS] Firebase Admin SDK successfully initialized
+[2026-08-11T08:46:20.144Z] [SERVER] Connected to SQLite database
+[2026-08-11T08:46:20.151Z] [SERVER] Failed to initialize database schema {"error":"SQLITE_ERROR: near \"name\": syntax error"}
+[2026-08-11T08:46:20.151Z] [SERVER] Failed to initialize database schema {"error":"SQLITE_ERROR: near \"name\": syntax error"}
+[2026-08-11T08:53:53.758Z] [SERVER] ====================================================
+[2026-08-11T08:53:53.759Z] [SERVER] SERVER STARTUP INITIATED
+[2026-08-11T08:53:53.759Z] [SERVER] ====================================================
+[2026-08-11T08:53:53.842Z] [SERVER] [FCM SUCCESS] Firebase Admin SDK successfully initialized
+[2026-08-11T08:53:53.865Z] [DB] Creating users...
+[2026-08-11T08:53:53.873Z] [SERVER] Connected to SQLite database
+[2026-08-11T08:53:53.884Z] [DB] users OK
+[2026-08-11T08:53:53.885Z] [DB] Creating contacts...
+[2026-08-11T08:54:45.067Z] [SERVER] ====================================================
+[2026-08-11T08:54:45.069Z] [SERVER] SERVER STARTUP INITIATED
+[2026-08-11T08:54:45.069Z] [SERVER] ====================================================
+[2026-08-11T08:54:45.182Z] [SERVER] [FCM SUCCESS] Firebase Admin SDK successfully initialized
+[2026-08-11T08:54:45.213Z] [DB] Creating users...
+[2026-08-11T08:54:45.223Z] [SERVER] Connected to SQLite database
+[2026-08-11T08:54:45.229Z] [DB] users OK
+[2026-08-11T08:54:45.229Z] [DB] Creating contacts...
+[2026-08-11T08:54:45.243Z] [DB] contacts OK
+[2026-08-11T08:54:45.243Z] [DB] Creating calls...
+[2026-08-11T08:54:45.249Z] [DB] calls OK
+[2026-08-11T08:54:45.249Z] [DB] Creating statuses...
+[2026-08-11T08:54:45.255Z] [DB] statuses OK
+[2026-08-11T08:54:45.255Z] [DB] Creating messages...
+[2026-08-11T08:54:45.261Z] [DB] messages OK
+[2026-08-11T08:54:45.261Z] [DB] Creating pinned_messages...
+[2026-08-11T08:54:45.267Z] [DB] pinned_messages OK
+[2026-08-11T08:54:45.273Z] [DB] ALL TABLES CREATED
+[2026-08-11T08:54:45.276Z] [SERVER] [SERVER] Node server successfully started and listening on 0.0.0.0:9000
+[2026-08-11T08:58:18.726Z] /statuses/1786438695306_51bxykgo5ot.jpg video /statuses/1786438695299_pal8z6rnrar.mp4
+[2026-08-11T08:58:18.727Z] D:\PYTHON\AnonChat 2\public\statuses\1786438695299_pal8z6rnrar.mp4
+[2026-08-11T09:00:12.564Z] [STATUS VIEW] Cached: 1 [{"userId":"usr_402761","name":"Georgina","viewedAt":1786438812564,"statusId":1}]
+[2026-08-11T09:00:15.892Z] [STATUS VIEW] Cached: 3 [{"userId":"usr_402761","name":"Georgina","viewedAt":1786438815892,"statusId":3}]
+[2026-08-11T09:01:15.572Z] [STATUS VIEW] Cached: 4 [{"userId":"usr_ogx128y","name":"Lutan","viewedAt":1786438875572,"statusId":4}]
+[2026-08-11T09:09:31.850Z] [STATUS VIEW] Cached: 5 [{"userId":"usr_402761","name":"Georgina","viewedAt":1786439371850,"statusId":5}]
+[2026-08-11T09:46:18.355Z] [SERVER] [SERVER] User disconnected finalized "usr_402761"
