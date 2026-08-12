@@ -457,18 +457,56 @@ body {
             </div>
             
             <div id="tab-groups" class="hidden flex-1 flex flex-col h-full overflow-y-auto bg-slate-950">
-               
-               <!-- Recent -->
-               <div class="px-4 pt-5 pb-2 text-xs uppercase text-slate-500 font-semibold">
-                  Coming soon...
+
+               <div class="px-4 pt-4 pb-3 flex items-center justify-between">
+                   <div>
+                       <h2 class="text-sm font-bold text-slate-200">Groups</h2>
+                       <p class="text-[10px] text-slate-500">Private and public communities</p>
+                   </div>
+           
+                   <button
+                       onclick="openCreateGroupModal()"
+                       class="w-9 h-9 rounded-xl bg-brand-600 hover:bg-brand-500 text-white flex items-center justify-center transition">
+                       <i class="fas fa-plus text-xs"></i>
+                   </button>
                </div>
-               
-               <div id="updates-list" class="divide-y divide-slate-800">
-                  
-                  
+           
+               <div class="px-4 pb-3">
+                   <div class="relative">
+                       <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 text-xs"></i>
+           
+                       <input
+                           id="group-search"
+                           type="text"
+                           placeholder="Search groups..."
+                           oninput="searchGroups(this.value)"
+                           class="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-3 py-2.5 text-xs text-slate-200 outline-none focus:border-brand-500">
+                   </div>
                </div>
-               
-            </div>
+           
+               <div class="px-4 pt-2 pb-2 flex items-center justify-between">
+                   <span class="text-[10px] uppercase tracking-wider text-slate-500 font-bold">
+                       My Groups
+                   </span>
+               </div>
+           
+               <div id="my-groups-list" class="divide-y divide-slate-800/70"></div>
+           
+               <div class="px-4 pt-6 pb-2 flex items-center justify-between">
+                   <span class="text-[10px] uppercase tracking-wider text-slate-500 font-bold">
+                       Public Groups
+                   </span>
+           
+                   <button
+                       onclick="socket.emit('loadPublicGroups')"
+                       class="text-[10px] text-brand-400 hover:text-brand-300">
+                       Refresh
+                   </button>
+               </div>
+           
+               <div id="public-groups-list" class="divide-y divide-slate-800/70 pb-6"></div>
+           
+           </div>
 
             <!-- Status Replier -->
             <div id="status-replier" class="bottom-0 fixed hidden inset-0 z-[99999]  bg-[#393939] flex flex-col" style="top:85%;   border-top-left-radius: 40px;
@@ -638,9 +676,9 @@ body {
             <div class="w-20 h-20 rounded-3xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mb-4 text-3xl shadow-2xl shadow-emerald-500/10">
                <i class="fa-solid fa-comments"></i>
             </div>
-            <h2 class="text-xl font-bold text-white mb-2">No Active Peer Selected</h2>
+            <h2 class="text-xl font-bold text-white mb-2">No Chat Selected</h2>
             <p class="text-xs text-slate-400 max-w-sm leading-relaxed mb-6">
-               Choose an anonymous active peer from the list on the left to start encrypted direct messaging, photo sharing, or audio/video calling.
+               Choose a user  to start encrypted direct messaging, files sharing or audio/video calling.
             </p>
          </div>
          
@@ -650,7 +688,8 @@ body {
             <!-- Chat Room Header -->
             <header class="px-4 py-3 glass-header flex items-center justify-between shrink-0 z-20">
                <div class="flex items-center gap-3 overflow-hidden">
-                  <button onclick="closeMobileChat()" class="md:hidden p-2 text-slate-300 hover:text-white rounded-xl active:bg-slate-800/80 transition">
+   
+                  <button onclick="activeTargetUserId = '';closeMobileChat()" class="md:hidden p-2 text-slate-300 hover:text-white rounded-xl active:bg-slate-800/80 transition">
                      <i class="fa-solid fa-chevron-left text-base"></i>
                   </button>
                   
@@ -683,6 +722,12 @@ body {
                   
                   <button onclick="openUserInfo(activeTargetUserId)" title="Info" class="p-2.5 text-slate-300 hover:text-emerald-400 bg-slate-900/60 border border-slate-800 rounded-xl active:scale-95 transition">
                      <i class="fa-solid fa-info-circle text-xs"></i>
+                  </button>
+                  <button onclick="leaveGroup(activeGroupId)" title="Exit" class="p-2.5 text-slate-300 hover:text-emerald-400 bg-slate-900/60 border border-slate-800 rounded-xl active:scale-95 transition">
+                     <i class="fa-solid fa-sign-out-alt text-xs"></i>
+                  </button>
+                  <button id="group-invite-btn" onclick="openGroupInviteModal()"    title="Invite Members"  class="hidden p-2.5 text-slate-300 hover:text-emerald-400 bg-slate-900/60 border border-slate-800 rounded-xl active:scale-95 transition">
+                     <i class="fa-solid fa-user-plus text-xs"></i>
                   </button>
                   <!-- <button onclick="clearMessagesUI()" title="Clear Messages Display"
 							class="p-2.5 text-slate-400 hover:text-rose-400 rounded-xl active:bg-slate-800 transition">
@@ -885,6 +930,117 @@ body {
          </div>
       </div>
    </div>
+
+   <div id="create-group-modal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm items-center justify-center p-4">
+
+    <div class="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl">
+
+        <div class="flex items-center justify-between mb-5">
+            <div>
+                <h3 class="text-sm font-bold text-slate-200">Create Group</h3>
+                <p class="text-[10px] text-slate-500">Start a new community</p>
+            </div>
+
+            <button
+                onclick="closeCreateGroupModal()"
+                class="w-8 h-8 rounded-lg hover:bg-slate-800 text-slate-500">
+                <i class="fas fa-times text-xs"></i>
+            </button>
+        </div>
+
+        <div class="space-y-3">
+
+            <input
+                id="group-name"
+                type="text"
+                placeholder="Group name"
+                maxlength="60"
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-3 text-xs text-slate-200 outline-none focus:border-brand-500">
+
+            <textarea
+                id="group-description"
+                placeholder="Description"
+                maxlength="200"
+                rows="3"
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-3 text-xs text-slate-200 outline-none focus:border-brand-500 resize-none"></textarea>
+
+            <div class="grid grid-cols-2 gap-2">
+
+                <button
+                    id="private-group-btn"
+                    onclick="selectGroupType('private')"
+                    class="group-type-btn border border-brand-500 bg-brand-600/20 rounded-xl p-3 text-left">
+                    <i class="fas fa-lock text-brand-400 text-xs"></i>
+                    <div class="text-xs font-semibold text-slate-200 mt-2">
+                        Private
+                    </div>
+                    <div class="text-[9px] text-slate-500 mt-1">
+                        Invite only
+                    </div>
+                </button>
+
+                <button
+                    id="public-group-btn"
+                    onclick="selectGroupType('public')"
+                    class="group-type-btn border border-slate-800 bg-slate-950 rounded-xl p-3 text-left">
+                    <i class="fas fa-globe text-emerald-400 text-xs"></i>
+                    <div class="text-xs font-semibold text-slate-200 mt-2">
+                        Public
+                    </div>
+                    <div class="text-[9px] text-slate-500 mt-1">
+                        Anyone can join
+                    </div>
+                </button>
+
+            </div>
+
+            <button
+                onclick="createGroup()"
+                class="w-full py-3 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold transition">
+                Create Group
+            </button>
+
+        </div>
+    </div>
+   </div>
+
+   <div id="group-invite-modal"  class="hidden fixed inset-0 z-50 items-center justify-center bg-black/70 backdrop-blur-sm">
+
+    <div class="w-full max-w-md mx-4 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden">
+
+        <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
+            <div>
+                <h3 class="text-sm font-bold text-slate-100">
+                    Invite Members
+                </h3>
+                <p class="text-[10px] text-slate-500">
+                    Select people to invite to this group
+                </p>
+            </div>
+
+            <button
+                onclick="closeGroupInviteModal()"
+                class="p-2 text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <div class="p-3">
+            <input
+                id="group-invite-search"
+                type="text"
+                placeholder="Search people..."
+                oninput="renderGroupInviteUsers()"
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-slate-200 outline-none focus:border-brand-500">
+
+            <div
+                id="group-invite-users"
+                class="mt-3 max-h-80 overflow-y-auto divide-y divide-slate-800">
+            </div>
+        </div>
+
+    </div>
+</div>
    
    
    <div id="user-info-modal" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in" onclick="closeUserModal()">
@@ -1324,6 +1480,16 @@ let ffmpegLoadPromise = null;
 let dpCropImage=null,dpCropDragging=false;
 let dpCropX=0,dpCropY=0,dpCropStartX=0,dpCropStartY=0;
 let editorMode = null;
+let selectedGroupType='private';
+let activeGroupForInvite = null;
+let groupInvite = null;
+
+const groupCache={
+   groups:new Map(),
+   messages:new Map(),
+   groupMembers:new Map(),
+   lastMessages:new Map()
+};
 
 const RTC_CONFIG = {
    iceServers: [
@@ -1384,8 +1550,6 @@ function playNotificationSound()
    catch (e)
    {}
 }
-
-
 
 function playDialtone()
 {
@@ -1643,8 +1807,115 @@ if (socket)
       activeCallId = data.callId
    })
    
+   socket.on('groupsLoaded',groups=>{
+      groupCache.groups.clear();
+
+  
+      groups.forEach(group=>{
+          groupCache.groups.set(group.id,group);
+  
+          if(group.lastMessage)
+              groupCache.lastMessages.set(
+                  group.id,
+                  group.lastMessage
+              );
+              groupCache.groupMembers.set(
+               group.id,
+               new Map(
+                   (group.members || []).map(member => [
+                       member.user_id,
+                       member
+                   ])
+               )
+           );
+      });
+  
+      renderGroups();
+  });
+  
+  socket.on('groupHistoryLoaded', data => {
+   if (data.groupId !== activeGroupId) return;
+
+   messagesHistory = data.messages || [];
+
+   renderGroupMessages(messagesHistory);
+});
    
+   socket.on('groupMessageUpdated',data=>{
+      if(data.groupId!==activeGroupId)return;
+
+      const msg=data.msg;
+
+
+
+      const index=messagesHistory.findIndex(
+         m=>m.id===msg.id
+      );
+
+      if(index>=0){
+         messagesHistory[index]=msg;
+         renderGroupMessages(messagesHistory);
+      }
+   });
    
+  socket.on('groupMessage',message=>{
+   let messages=
+       groupCache.messages.get(message.group_id)||[];
+
+   messages.push(message);
+
+   if(messages.length>100)
+       messages=messages.slice(-100);
+
+   groupCache.messages.set(
+       message.group_id,
+       messages
+   );
+
+   groupCache.lastMessages.set(
+       message.group_id,
+       message
+   );
+
+   renderGroups();
+
+   if(activeGroupId===message.group_id)
+       addMessageUI(message, true);
+});
+ 
+   socket.on('groupError', (data)=>{
+      showToast(data.message, 'error')
+   })
+
+   socket.on('groupCreated',group=>{
+   groupCache.groups.set(group.id,group);
+   groupCache.messages.set(group.id,[]);
+   groupCache.lastMessages.set(group.id,null);
+
+   closeCreateGroupModal();
+   renderGroups();
+   selectGroupForChat(group.id);
+});
+
+   socket.on('groupLeft',({groupId})=>{
+      groupCache.groups.delete(groupId);
+      groupCache.lastMessages.delete(groupId);
+
+      if(activeGroupId===groupId){
+         activeGroupId=null;
+         messagesHistory=[];
+
+         document.getElementById('active-chat-content')
+            .classList.add('hidden');
+
+         document.getElementById('desktop-empty-state')
+            .classList.remove('hidden');
+      }
+      switchTab('groups')
+
+      renderGroups();
+   });
+
    socket.on("directHistoryLoaded", (
    {
       targetUserId,
@@ -1746,6 +2017,7 @@ if (socket)
       renderOnlineUsers();
    });
    
+
    socket.on("disconnect", () =>
    {
       showOfflineBanner("Disconnected from server");
@@ -1768,23 +2040,40 @@ if (socket)
    });
    
    socket.on("directMessage", (msg) => {
-      const otherUser = msg.user_id === myUserId ? msg.target_user_id : msg.user_id;
-      
-      lastMessagesMap[otherUser] = msg.text || (msg.file ? '[Attachment]' : '');
-      lastMessageTimestampMap[otherUser] = msg.time ? new Date(msg.time)
-         .getTime() : Date.now();
-      
+      const otherUser = msg.user_id === myUserId
+         ? msg.target_user_id
+         : msg.user_id;
+   
+      const oldCache = chatCache[otherUser];
+   
+      const exists = oldCache?.messages?.some(m =>
+         m.id === msg.id
+      ) || false;
+
+      if (!exists) {
+         chatCache[otherUser] = {
+            messages: [...(oldCache?.messages || []), msg],
+            offset: oldCache?.offset || 0,
+            hasMore: oldCache?.hasMore ?? true,
+            loaded: oldCache?.loaded || false,
+            pinned: oldCache?.pinned || null
+         };
+      }
+   
+      const cache = chatCache[otherUser];
+   
+      lastMessagesMap[otherUser] =
+         msg.text || (msg.file ? '[Attachment]' : '');
+   
+      lastMessageTimestampMap[otherUser] =
+         msg.time ? new Date(msg.time).getTime() : Date.now();
+   
       if (otherUser === activeTargetUserId) {
-         // Check both database ID and temporary ID if applicable
-         const exists = messagesHistory.some(m =>
-            (m.id && m.id === msg.id) ||
-            (m.tempId && m.tempId === msg.tempId)
-         );
-         
+         messagesHistory = cache.messages;
+   
          if (!exists) {
-            messagesHistory.push(msg);
             addMessageUI(msg, true);
-            
+   
             if (msg.user_id !== myUserId) {
                socket.emit("markRead", {
                   targetUserId: otherUser,
@@ -1793,17 +2082,18 @@ if (socket)
             }
          }
       } else if (msg.user_id !== myUserId) {
-         unreadUsers[otherUser] = (unreadUsers[otherUser] || 0) + 1;
+         unreadUsers[otherUser] =
+            (unreadUsers[otherUser] || 0) + 1;
+   
          updateUnreadBadgeTotal();
       }
-      
-      renderOnlineUsers();
-      
-      if (msg.user_id !== myUserId && audioEnabled) {
-         playNotificationSound();
-      }
-   });
    
+      renderOnlineUsers();
+   
+      if (msg.user_id !== myUserId && audioEnabled)
+         playNotificationSound();
+   });
+  
    socket.on('messageUpdated', (
    {
       msg
@@ -1825,7 +2115,7 @@ if (socket)
    {
       messagesHistory = messagesHistory.filter(m => m.id !== msgId);
       const el = document.querySelector(`[data-msg-id="${msgId}"]`);
-      if (el) el.remove();
+      if (el) el.querySelector('.msg-text-content').innerHTML = '<i class="fas fa-ban"></i> Message Deleted';
       if (messagesHistory.length === 0)
       {
          document.getElementById('empty-state-notice')
@@ -1859,7 +2149,6 @@ if (socket)
       });
       
       renderOnlineUsers()
-      console.log('rendering users')
    });
    
    socket.on("statusUpdated", () =>
@@ -1874,7 +2163,6 @@ if (socket)
    {
       pinnedMsgId = pinned ? (pinned.message_id || pinned.id) : null;
       updatePinnedBanner(pinned);
-      console.log(pinned)
       renderOnlineUsers()
    });
    
@@ -2006,12 +2294,12 @@ if (socket)
       renderCallHistory();
    });
    
+   
    socket.on('callUpdated', call => {
       const index = calls.findIndex(c => c.id === call.id);
       
       
       if (call.status == 'ended' || call.status == 'missed') {
-         console.log('----------------------------')
          callTimeoutTimer = false;
          endActiveCall(activeCallId)
          stopDialtone()
@@ -2036,7 +2324,6 @@ if (socket)
    socket.on('callAccepted', async (data) =>
    {
       
-      console.log("callAccepted received", data);
       
       activeCallTargetUserId = data.fromUserId;
       stopDialtone();
@@ -2366,6 +2653,8 @@ function switchTab(tabId)
          .classList.remove('hidden');
       document.getElementById('nav-btn-groups')
          .className = "flex flex-col items-center gap-1 text-brand-400 font-semibold transition";
+         socket.emit('loadGroups');
+        socket.emit('loadPublicGroups');
    }
    else if (tabId === 'updates')
    {
@@ -2400,7 +2689,8 @@ window.switchTab = switchTab
 function selectUserForChat(targetUserId)
 {
    activeTargetUserId = targetUserId;
-   
+   activeGroupId = null;
+   document.getElementById("call-buttons-header")?.classList.remove("hidden");
    
    
    delete unreadUsers[targetUserId];
@@ -2446,7 +2736,7 @@ function selectUserForChat(targetUserId)
    document.getElementById("send-btn")
       .disabled = false;
    
-   const cache = chatCache[targetUserId];
+   cache = chatCache[targetUserId];
    
    
    if (cache?.loaded)
@@ -2533,52 +2823,90 @@ function handleTypingInput()
 }
 
 async function handleSend(e){
-    e.preventDefault();
+   e.preventDefault();
 
-    const input=document.getElementById('msg-input');
-    const text=input.value.trim();
+   const input=document.getElementById('msg-input');
+   const text=input.value.trim();
 
-    if((!text&&!selectedFileBase64)||!activeTargetUserId)return;
+   if((!text&&!selectedFileBase64)||(!activeTargetUserId&&!activeGroupId))return;
 
+   const replyTo=activeReplyMsg
+       ? {
+           id:activeReplyMsg.id,
+           owner_id:activeReplyMsg.user_id,
+           name:activeReplyMsg.name,
+           text:activeReplyMsg.text,
+           file:activeReplyMsg.file,
+           fileName:activeReplyMsg.fileName,
+           fileType:activeReplyMsg.fileType,
+           fileSize:activeReplyMsg.fileSize
+       }
+       : null;
 
-    const targetUserId=activeTargetUserId;
-    const replyTo=activeReplyMsg?{id:activeReplyMsg.id, owner_id:activeReplyMsg.user_id, name:activeReplyMsg.name,text:activeReplyMsg.text,file:activeReplyMsg.file,fileName:activeReplyMsg.fileName,fileType:activeReplyMsg.fileType,fileSize:activeReplyMsg.fileSize}:null;
-    const payload={targetUserId,text,replyTo};
+   const payload={
+       text,
+       replyTo
+   };
 
-    input.value='';
-    socket.emit('stopTyping',{targetUserId});
+   if(activeGroupId)
+       payload.groupId=activeGroupId;
+   else
+       payload.targetUserId=activeTargetUserId;
 
-    if(!selectedFileBase64){
-        socket.emit('directMessage',payload);
-        clearSelectedFile();
-        cancelReply();
-        return;
-    }
+   input.value='';
 
-    const file=await base64ToFile(selectedFileBase64,selectedFileName,selectedFileType);
-    const tempId=addUploadingMessage(file,text);
+   if(activeTargetUserId)
+       socket.emit('stopTyping',{targetUserId:activeTargetUserId});
 
-    clearSelectedFile();
-    cancelReply();
+   if(!selectedFileBase64){
+       socket.emit(
+           activeGroupId?'groupMessage':'directMessage',
+           payload
+       );
+       cancelReply();
+       return;
+   }
 
-    try{
-        const uploaded=await uploadMessageFile(file,p=>updateUploadingMessage(tempId,p));
+   const file=await base64ToFile(
+       selectedFileBase64,
+       selectedFileName,
+       selectedFileType
+   );
 
-        document.querySelector(`[data-msg-id="${tempId}"]`)?.remove();
+   const tempId=addUploadingMessage(file,text);
 
-        Object.assign(payload,{
-            file:uploaded.url,
-            fileName:uploaded.fileName,
-            fileType:uploaded.fileType,
-            fileSize:uploaded.fileSize
-        });
+   clearSelectedFile();
+   cancelReply();
 
-        socket.emit('directMessage',payload);
+   try{
+       const uploaded=await uploadMessageFile(
+           file,
+           p=>updateUploadingMessage(tempId,p)
+       );
 
-    }catch(err){
-        document.querySelector(`[data-msg-id="${tempId}"]`)?.remove();
-        showToast('Upload failed','error');
-    }
+       document.querySelector(
+           `[data-msg-id="${tempId}"]`
+       )?.remove();
+
+       Object.assign(payload,{
+           file:uploaded.url,
+           fileName:uploaded.fileName,
+           fileType:uploaded.fileType,
+           fileSize:uploaded.fileSize
+       });
+
+       socket.emit(
+           activeGroupId?'groupMessage':'directMessage',
+           payload
+       );
+
+   }catch(err){
+       document.querySelector(
+           `[data-msg-id="${tempId}"]`
+       )?.remove();
+
+       showToast('Upload failed','error');
+   }
 }
 
 function uploadMessageFile(file, onProgress) {
@@ -2671,7 +2999,6 @@ function renderAllMessages(scrollBottom = true)
       document.getElementById("empty-state-notice")
          .classList.add("hidden");
       messagesHistory.forEach(msg => {
-    console.log(msg)
 
          if (msg.type === "call") {
             addCallMessageUI(msg);
@@ -2788,6 +3115,7 @@ function addMessageUI(msg, scroll = false)
 {
    const container = document.getElementById('messages');
    const isMe = msg.user_id === myUserId;
+
    
    var targetUser = allUsers.find(u => u.id === msg.user_id);
    
@@ -2899,8 +3227,19 @@ function addMessageUI(msg, scroll = false)
    
    let attachmentHTML = '';
 
-   
-   
+   let groupInviteHTML='';
+
+      if(msg.type==='group_invite'){
+         groupInviteHTML=`<div class="flex flex-col items-center gap-2">
+            <img src="/icons/group-icon.png" class="w-[150px] h-[100px]" style="border-top-right-radius:15px; border-top-left-radius:15px">
+            <div class="items-center gap-2 flex ">
+            <i class="fa-solid fa-users text-brand-400"></i>
+            <span class="text-xs font-semibold">${escapeHTML(msg.groupName)}</span>
+            ${!isMe?`<button onclick="event.stopPropagation();acceptGroupInvite(${msg.groupId})" class="px-2 py-1 rounded bg-brand-600 text-[10px]">Join</button>`:''}
+         </div>
+      </div>`;
+      }
+      
    if (msg.file) {
       if (msg.file_type?.startsWith('image/')) {
          attachmentHTML = `
@@ -2912,7 +3251,7 @@ function addMessageUI(msg, scroll = false)
                         <div class="flex items-center justify-between mt-2 text-xs text-slate-300">
                             <span class="truncate text-xs">${escapeHTML(msg.file_name).length > 15 ? escapeHTML(msg.file_name).slice(0, 15) + '...' : escapeHTML(msg.file_name)} • ${size}</span>
         
-                            <a href="${msg.file}"  target="_blank" rel="noopener noreferrer"  download="${msg.file_name}"
+                            <a   onclick="downloadFile('${msg.file}', '${msg.file_name}')"
                                 class="px-2 py-1 rounded bg-brand-600 hover:bg-brand-700">
                                 <i class="fa-solid fa-download"></i>
                             </a>
@@ -2922,13 +3261,13 @@ function addMessageUI(msg, scroll = false)
          attachmentHTML = `
                     <div class="mb-2">
                         <video controls class="max-w-full max-h-60 rounded-xl border border-slate-700/50">
-                            <source src="${msg.file}" type="${msg.file_type}">
+                            <source src="${msg.file}"  type="${msg.file_type}">
                         </video>
         
                         <div class="flex items-center justify-between mt-2 text-xs text-slate-300">
                             <span class="truncate text-xs">${escapeHTML(msg.file_name).length > 15 ? escapeHTML(msg.file_name).slice(0, 15) + '...' : escapeHTML(msg.file_name)} • ${size}</span>
         
-                            <a href="${msg.file}"  target="_blank" rel="noopener noreferrer"  download="${msg.file_name}"
+                            <a  onclick="downloadFile('${msg.file}', '${msg.file_name}')"  target="_blank" rel="noopener noreferrer"  download="${msg.file_name}"
                                 class="px-2 py-1 rounded bg-brand-600 hover:bg-brand-700">
                                 <i class="fa-solid fa-download"></i>
                             </a>
@@ -2944,7 +3283,7 @@ function addMessageUI(msg, scroll = false)
                         <div class="flex items-center justify-between mt-2 text-xs text-slate-300">
                             <span class="truncate text-xs">${escapeHTML(msg.file_name).length > 15 ? escapeHTML(msg.file_name).slice(0, 15) + '...' : escapeHTML(msg.file_name)} • ${size}</span>
 
-                            <a href="${msg.file}"  target="_blank" rel="noopener noreferrer"  download="${msg.file_name}"
+                            <a  onclick="downloadFile('${msg.file}', '${msg.file_name}')"  target="_blank" rel="noopener noreferrer"  download="${msg.file_name}"
                                 class="px-2 py-1 rounded bg-brand-600 hover:bg-brand-700">
                                 <i class="fa-solid fa-download"></i>
                             </a>
@@ -2962,7 +3301,7 @@ function addMessageUI(msg, scroll = false)
                             </div>
                         </div>
         
-                        <a href="${msg.file}"  target="_blank" rel="noopener noreferrer"  download="${msg.file_name}"
+                        <a  onclick="downloadFile('${msg.file}', '${msg.file_name}')"  target="_blank" rel="noopener noreferrer"  download="${msg.file_name}"
                             class="px-1 py-1 rounded-lg bg-brand-600 hover:bg-brand-700" style="margin-left:5px">
                             <i class="fa-solid fa-download"></i>
                         </a>
@@ -3025,14 +3364,16 @@ function addMessageUI(msg, scroll = false)
             }
                 <div class="flex items-center gap-1.5 mb-0.5 text-[10px] text-slate-400 select-none">
                     ${msg.forwarded ? '<span class="text-[9px] text-brand-300 font-semibold"><i class="fa-solid fa-share text-[8px]"></i> Forwarded</span> • ' : ''}
-                    <span>${formattedTime}</span>
+                    ${msg.group_id ? `<span style="margin-right:auto"> ${msg.name}</span> ~ ` : ''}
+
+                    <span>${formattedTime}</span> 
                     <span class="msg-edited-badge">${msg.edited ? '<span class="italic text-[9px]">(edited)</span>' : ''}</span>
                     ${readStatusHTML}
                 </div>
                 <div class="w-full p-3 rounded text-xs sm:text-sm ${isMe ? 'bg-brand-600 text-white rounded-br-none' : 'bg-slate-800 text-slate-100 rounded-bl-none'} shadow-md">
                     ${replyHTML}
                     ${attachmentHTML}
-                    <div class="msg-text-content"> ${ msg.deleted ? '<span class="italic opacity-60"><i class="fa-solid fa-ban mr-1"></i>Message deleted</span>': msg.text ? escapeHTML(msg.text) : ''}</div>
+                    <div class="msg-text-content">${msg.deleted? '<span class="italic text-slate-200"> <i class="fas fa-ban"></i> Message deleted </span>':msg.type==='group_invite'?groupInviteHTML:msg.text?escapeHTML(msg.text):''}</div>
                     <div class="reactions-wrapper">${reactionsHTML}</div>
                 </div>
             `;
@@ -3067,7 +3408,7 @@ function addMessageUI(msg, scroll = false)
       });
    }
    
-   wrap.addEventListener('dblclick', () =>
+   outerContainer.addEventListener('dblclick', () =>
    {
       if (msg.reply_to && !msg.deleted)
       {
@@ -3123,6 +3464,17 @@ function addMessageUI(msg, scroll = false)
    }
 }
 
+function downloadFile(link, name) {
+   if (!link) return;
+
+   const payload = btoa(JSON.stringify({
+       url: link,
+       name: name || 'file'
+   }));
+
+   window.location.href = `anon-download://${payload}`;
+}
+
 function triggerReply(targetMsg)
 {
    activeReplyMsg = targetMsg;
@@ -3152,7 +3504,6 @@ function handleContextMenu(e, msgId)
    const msg = messagesHistory.find(m => m.id === msgId);
    if (!msg) return;
 
-   console.log(msg)
    
    const isMe = msg.user_id === myUserId;
    const menu = document.getElementById('custom-context-menu');
@@ -3235,6 +3586,7 @@ function openForwardModal(msg_id){
 
     document.getElementById('forward-modal').classList.remove('hidden');
 }
+
 function closeForwardModal()
 {
    document.getElementById('forward-modal')
@@ -3271,33 +3623,35 @@ function contextActionInfo(msg_id)
    }
 }
 
-function handleReactionClick(msgId, emoji)
+function handleReactionClick(msgId,emoji)
 {
-   const msg = messagesHistory.find(m => m.id === msgId);
-   if (msg && msg.reactions && msg.reactions[emoji])
-   {
-      const list = msg.reactions[emoji];
-      const idx = list.indexOf(myUserId);
-      if (idx > -1)
-      {
-         list.splice(idx, 1);
-      }
-      else if (list.length > 0)
-      {
+   const msg=messagesHistory.find(m=>m.id===msgId);
+
+   if(msg?.reactions?.[emoji]){
+      const list=msg.reactions[emoji];
+
+      const i=list.findIndex(r=>
+         typeof r==='string'
+            ? r===myUserId
+            : r.userId===myUserId
+      );
+
+      if(i>=0)
+         list.splice(i,1);
+      else if(list.length)
          list.pop();
-      }
-      if (list.length === 0)
-      {
+
+      if(!list.length)
          delete msg.reactions[emoji];
-      }
+
       updateSingleMessageUI(msg);
    }
-   if (socket)
-   {
-      socket.emit('toggleReaction',
-      {
+
+   if(socket){
+      socket.emit('toggleReaction',{
          msgId,
-         emoji
+         emoji,
+         groupId:activeGroupId||null
       });
    }
 }
@@ -3328,7 +3682,8 @@ function contextActionReact(emoji)
       socket.emit('toggleReaction',
       {
          msgId: contextMenuTargetMsgId,
-         emoji: emoji
+         emoji: emoji,
+         groupId : activeGroupId || null
       });
    }
 }
@@ -4057,21 +4412,78 @@ function closeStatusReplyModal()
       .classList.add("hidden");
 }
 
-document.addEventListener('DOMContentLoaded', () =>
-{
-   const viewer = document.getElementById("status-viewer");
-   
-   viewer.addEventListener("mousedown", pauseStatus);
-   viewer.addEventListener("mouseup", resumeStatus);
-   
-   viewer.addEventListener("touchstart", pauseStatus,
-   {
-      passive: true
-   });
-   viewer.addEventListener("touchend", resumeStatus);
-   viewer.addEventListener("touchcancel", resumeStatus);
-})
+document.addEventListener('DOMContentLoaded', () => {
+   const viewer = document.getElementById('status-viewer');
 
+   if (viewer) {
+       viewer.addEventListener('mousedown', pauseStatus);
+       viewer.addEventListener('mouseup', resumeStatus);
+
+       viewer.addEventListener('touchstart', pauseStatus, {
+           passive: true
+       });
+
+       viewer.addEventListener('touchend', resumeStatus);
+       viewer.addEventListener('touchcancel', resumeStatus);
+   }
+
+   const messagesContainer = document.getElementById('messages-container');
+
+   if (messagesContainer) {
+       messagesContainer.oncontextmenu = e => {
+
+
+           e.preventDefault();
+
+           document
+               .querySelectorAll('.close-context-menu')
+               .forEach(c => c.remove());
+
+           const menu = document.createElement('div');
+
+           menu.className =
+               'close-context-menu fixed z-50 text-xs bg-[#000] border border-green-400 rounded overflow-hidden shadow-xl px-2 py-1';
+
+           menu.style.left = `${e.clientX}px`;
+           menu.style.top = `${e.clientY}px`;
+
+           menu.innerHTML = `
+               <button
+   
+                   onclick="closeChat(); this.parentElement.remove()"
+                   class="block w-full px-4 py-2 text-left hover:bg-slate-500/40">
+                 <i class="fas fa-close border"></i>  Close Chat
+               </button>
+
+               <button
+                   onclick="groupInfo(); this.parentElement.remove()"
+                   class="block w-full px-4 py-2 text-left hover:bg-slate-500/40">
+                   <i class="fas fa-user-circle"></i> User Info
+               </button>
+           `;
+
+
+
+           messagesContainer.appendChild(menu);
+
+           setTimeout(() => {
+               document.addEventListener('click', function closeMenu(e) {
+                   if (!menu.contains(e.target)) {
+                       menu.remove();
+                       document.removeEventListener('click', closeMenu);
+                   }
+               });
+           });
+       };
+   }
+});
+
+function closeChat(){
+   activeTargetUserId = ''; 
+   closeMobileChat()
+   document.getElementById('active-chat-content').classList.add('hidden')
+   document.getElementById('desktop-empty-state').classList.remove('hidden')
+}
 function pickStatusMedia(type, capture)
 {
    closeCreateStatus();
@@ -4100,7 +4512,6 @@ async function uploadEditedStatus(file, type)
 {
    let thumbnail = null;
    
-   console.log(type, ' upload called')
    
    if (type === "video")
       thumbnail = await createVideoThumbnail(file);
@@ -4450,7 +4861,6 @@ async function initiateCall(targetUserId, callType)
    
    if (callType === "audio")
    {
-      console.log(voiceUI.classList)
       voiceUI?.classList.remove("hidden");
       
       localVideo.classList.add("hidden");
@@ -4524,7 +4934,6 @@ async function initiateCall(targetUserId, callType)
       
       callCheckInterval = setInterval(() => {
          CALL_TIMEOUT_MS -= 1000;
-         console.log('___ ' + CALL_TIMEOUT_MS + ' ' + callCheckInterval)
          
          if (CALL_TIMEOUT_MS <= 0 && callTimeoutTimer) {
             clearInterval(callCheckInterval);
@@ -4533,7 +4942,6 @@ async function initiateCall(targetUserId, callType)
             
             stopDialtone();
             endActiveCall();
-            console.log(activeCallId)
             socket.emit('missedCall', activeCallId)
             showToast("No answer.", "error");
          }
@@ -4617,7 +5025,6 @@ async function acceptIncomingCall(callId)
       await peerConnection.setLocalDescription(answer);
       
       
-      console.log("Accepting call:", callId);
       
       socket.emit('acceptCall',
       {
@@ -6492,6 +6899,448 @@ window.deleteCallLog = function(callId) {
    });
 };
 
+
+// GROUPS =====================
+function renderGroups(){
+   const myList=document.getElementById('my-groups-list');
+   const publicList=document.getElementById('public-groups-list');
+
+   if(!myList||!publicList)return;
+
+   myList.innerHTML='';
+   publicList.innerHTML='';
+
+   const groups=[...groupCache.groups.values()];
+   const myGroups=groups.filter(g=>g.role);
+   const publicGroups=groups.filter(g=>g.type==='public'&&!g.role);
+
+   if(!myGroups.length){
+       myList.innerHTML=`
+           <div class="p-5 text-center text-xs text-slate-500 italic">
+               You have not joined any groups yet
+           </div>
+       `;
+   }else{
+       myGroups
+           .sort((a,b)=>{
+               const ta=groupCache.lastMessages.get(a.id)?.time||a.created_at;
+               const tb=groupCache.lastMessages.get(b.id)?.time||b.created_at;
+               return tb-ta;
+           })
+           .forEach(group=>{
+               myList.appendChild(createGroupItem(group,true));
+           });
+   }
+
+   if(!publicGroups.length){
+       publicList.innerHTML=`
+           <div class="p-5 text-center text-xs text-slate-500 italic">
+               No public groups available
+           </div>
+       `;
+   }else{
+       publicGroups.forEach(group=>{
+           publicList.appendChild(createGroupItem(group,false));
+       });
+   }
+}
+
+function createGroupItem(group,isMember){
+   const item=document.createElement('div');
+
+
+   const last=groupCache.lastMessages.get(group.id);
+   const preview=last?.text||
+       (last?.file_type?'📎 Attachment':'No messages yet');
+
+   item.className=
+       'p-3 flex items-center gap-3 cursor-pointer hover:bg-slate-800/60 transition';
+
+   item.onclick=()=>{
+       if(isMember)
+           selectGroupForChat(group);
+       else
+           joinPublicGroup(group.id);
+   };
+
+   item.innerHTML=`
+       <div class="w-11 h-11 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center shrink-0 overflow-hidden">
+           ${
+               group.image
+               ? `<img src="${escapeHTML(group.image)}" class="w-full h-full object-cover">`
+               : `<i class="fas fa-users text-slate-500"></i>`
+           }
+       </div>
+
+       <div class="flex-1 min-w-0">
+           <div class="flex items-center justify-between gap-2">
+               <span class="text-xs font-semibold text-slate-200 truncate">
+                   ${escapeHTML(group.name)}
+               </span>
+
+               ${
+                   group.type==='public'
+                   ? `<i class="fas fa-globe text-[9px] text-emerald-400"></i>`
+                   : `<i class="fas fa-lock text-[9px] text-slate-500"></i>`
+               }
+           </div>
+
+           <div class="text-[10px] text-slate-500 truncate mt-1">
+               ${
+                   isMember
+                   ? `${last && last.user_id == myUserId ? "You :" : last ? last.name + ':' : '' } ${escapeHTML(preview)}`
+                   : `${group.memberCount||0} members`
+               }
+           </div>
+       </div>
+
+       ${
+           isMember
+           ? `${last && last.reply_to && last.reply_to.owner_id == myUserId ? '<span class=" text-green-400">@</span>' : ''} <i class="fas fa-chevron-right text-[9px] text-slate-600"></i>`
+           : `<button
+                   onclick="event.stopPropagation();joinPublicGroup(${group.id})"
+                   class="px-2.5 py-1 rounded-lg bg-brand-600 hover:bg-brand-500 text-[10px] font-semibold text-white">
+                   Join
+              </button>`
+       }
+   `;
+
+   return item;
+}
+
+function selectGroupForChat(group)
+{
+    activeGroupId = group.id;
+    socket.emit('joinGroup', {groupId:group.id})
+
+    activeTargetUserId = null;
+    const inviteBtn = document.getElementById('group-invite-btn');
+
+    if (inviteBtn) {
+        const canInvite =
+            group.role === 'owner' ||
+            group.role === 'admin';
+    
+        inviteBtn.classList.toggle('hidden', !canInvite);
+    }
+    document.getElementById("desktop-empty-state").classList.add("hidden");
+    document.getElementById("active-chat-content").classList.remove("hidden");
+    document.getElementById("empty-state-notice").classList.add("hidden");
+
+    document.getElementById("header-chat-title").innerText = group.name;
+
+    document.getElementById("active-chat-avatar").innerHTML = group.image
+        ? `<img src="${group.image}" style="border-radius:50%;object-fit:cover;width:100%;height:100%">`
+        : `<i class="fa-solid fa-users"></i>`;
+
+    document.getElementById("header-status-badge").innerHTML =
+        `<span class="w-1.5 h-1.5 rounded-full bg-brand-400"></span> ${group.memberCount || 0} members`
+
+    document.getElementById("call-buttons-header")?.classList.add("hidden");
+
+    const msgInput = document.getElementById("msg-input");
+    msgInput.disabled = false;
+    msgInput.placeholder = `Message ${group.name}...`;
+
+    document.getElementById("send-btn").disabled = false;
+
+    messagesHistory = [];
+    renderAllMessages(false);
+
+    socket.emit("loadGroupHistory", {
+        groupId: group.id,
+        offset: 0,
+        limit: HISTORY_LIMIT
+    });
+
+
+    if (window.innerWidth < 768)
+    {
+        document.getElementById("sidebar-panel").classList.add("hidden");
+        document.getElementById("main-panel").classList.remove("hidden");
+        document.getElementById("main-panel").classList.add("flex");
+    }
+}
+
+function joinPublicGroup(groupId){
+   socket.emit('joinGroup',{
+       groupId
+   });
+}
+
+function searchGroups(query){
+   query=query.trim().toLowerCase();
+
+   document
+       .querySelectorAll('#my-groups-list > div,#public-groups-list > div')
+       .forEach(item=>{
+           item.style.display=
+               !query||item.textContent.toLowerCase().includes(query)
+               ? ''
+               : 'none';
+       });
+}
+
+function openCreateGroupModal(){
+    const modal=document.getElementById('create-group-modal');
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+
+    document.getElementById('group-name').focus();
+}
+
+function closeCreateGroupModal(){
+    const modal=document.getElementById('create-group-modal');
+
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+
+function selectGroupType(type){
+    selectedGroupType=type;
+
+    document.querySelectorAll('.group-type-btn').forEach(btn=>{
+        btn.classList.remove(
+            'border-brand-500',
+            'bg-brand-600/20'
+        );
+
+        btn.classList.add(
+            'border-slate-800',
+            'bg-slate-950'
+        );
+    });
+
+    const btn=document.getElementById(
+        type==='private'
+            ? 'private-group-btn'
+            : 'public-group-btn'
+    );
+
+    btn.classList.remove(
+        'border-slate-800',
+        'bg-slate-950'
+    );
+
+    btn.classList.add(
+        'border-brand-500',
+        'bg-brand-600/20'
+    );
+}
+
+function createGroup(){
+   const name=document.getElementById('group-name').value.trim();
+   const description=document.getElementById('group-description').value.trim();
+
+   if(!name){
+       showToast('Enter a group name','error');
+       return;
+   }
+
+   socket.emit('createGroup',{
+       name,
+       description,
+       type:selectedGroupType,
+       image:null
+   });
+}
+
+function showGroupChat() {
+   document.getElementById('active-chat-content').classList.remove('hidden');
+   document.getElementById('empty-state-notice').classList.add('hidden');
+
+   document.getElementById('call-buttons-header')?.classList.add('hidden');
+
+   document.getElementById('msg-input').disabled = false;
+   document.getElementById('send-btn').disabled = false;
+
+   document.getElementById('header-status-badge').innerHTML =
+       `<span class="w-1.5 h-1.5 rounded-full bg-brand-400"></span> Group`;
+
+   document.getElementById('pinned-banner').classList.add('hidden');
+
+   document.getElementById('messages').innerHTML = '';
+}
+
+function renderGroupMessages(messages)
+{
+    const container = document.getElementById('messages');
+
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    messages.forEach(message => {
+        addMessageUI(message, false);
+    });
+
+    container.scrollTop = container.scrollHeight;
+}
+
+function acceptGroupInvite(groupId) {
+   if (!groupId){showToast('Invalid Link', 'error'); return};
+
+   socket.emit('acceptGroupInvite', {
+       groupId
+   });
+
+}
+
+function rejectGroupInvite(groupId) {
+   if (!groupId) return;
+
+   socket.emit('rejectGroupInvite', {
+       groupId
+   });
+}
+
+function openGroupInviteModal() {
+    if (!activeGroupId) return;
+
+    activeGroupForInvite = activeGroupId;
+
+    const modal = document.getElementById('group-invite-modal');
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+
+    document.getElementById('group-invite-search').value = '';
+
+    renderGroupInviteUsers();
+}
+
+function closeGroupInviteModal() {
+    const modal = document.getElementById('group-invite-modal');
+
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+
+    activeGroupForInvite = null;
+}
+
+function renderGroupInviteUsers() {
+    const container = document.getElementById('group-invite-users');
+
+    if (!container) return;
+
+    const query = document
+        .getElementById('group-invite-search')
+        .value
+        .trim()
+        .toLowerCase();
+
+    const group = groupCache.groups.get(activeGroupForInvite);
+
+    if (!group) {
+        container.innerHTML = `
+            <div class="p-5 text-center text-xs text-slate-500">
+                Group not found
+            </div>
+        `;
+        return;
+    }
+
+    const members = groupCache.groupMembers?.get(activeGroupForInvite);
+
+      const memberIds = new Set(
+         members
+            ? [...members.keys()]
+            : []
+      );
+
+    const users = allUsers.filter(user => {
+        if (user.id === myUserId) return false;
+
+        if (memberIds.has(user.id)) return false;
+
+        if (!query) return true;
+
+        return (
+            user.name || ''
+        ).toLowerCase().includes(query);
+    });
+
+    if (!users.length) {
+        container.innerHTML = `
+            <div class="p-5 text-center text-xs text-slate-500">
+                No users available
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = '';
+
+    users.forEach(user => {
+        const item = document.createElement('div');
+
+        item.className =
+            'flex items-center gap-3 p-3 hover:bg-slate-800/60 transition';
+
+        item.innerHTML = `
+            <div class="w-9 h-9 rounded-xl bg-slate-800 border border-slate-700 overflow-hidden flex items-center justify-center shrink-0">
+                ${
+                    user.dp
+                        ? `<img src="${escapeHTML(user.dp)}"
+                                class="w-full h-full object-cover">`
+                        : `<span class="text-xs font-bold text-slate-400">
+                            ${escapeHTML((user.name || '?').charAt(0).toUpperCase())}
+                           </span>`
+                }
+            </div>
+
+            <div class="flex-1 min-w-0">
+                <div class="text-xs font-semibold text-slate-200 truncate">
+                    ${escapeHTML(user.name || 'Unknown')}
+                </div>
+
+                <div class="text-[9px] text-slate-500">
+                    ${user.id}
+                </div>
+            </div>
+
+            <button
+                onclick="sendGroupInvite('${user.id}')"
+                class="px-3 inv-btn-${user.id} py-1.5 rounded-lg bg-brand-600 hover:bg-brand-500 text-[10px] font-semibold text-white">
+                Invite
+            </button>
+        `;
+
+        container.appendChild(item);
+    });
+}
+
+function sendGroupInvite(targetUserId) {
+    if (!activeGroupForInvite || !targetUserId) return;
+
+    
+
+  const btn = document.querySelector(`.inv-btn-${targetUserId}`)
+
+    btn.setAttribute('disabled', true) 
+    btn.innerHTML = '<i class="fas fa-check-circle"></i> Invited'
+    socket.emit('inviteToGroup', {
+      groupId: activeGroupForInvite,
+      targetUserId
+   });
+    showToast('Invitation sent');
+
+}
+
+function leaveGroup(groupId){
+   if(!confirm('Are you sure you want to exit this group?')) return;
+   if(!groupId){return};
+
+   socket.emit('leaveGroup',{
+       groupId
+   });
+}
+
+
+
+
+
 function handleNativeBack() {
    
    if (!document.getElementById("status-viewer")
@@ -6517,12 +7366,29 @@ function handleNativeBack() {
       closeCreateStatus();
       return true;
    }
+
    
+   if (!document.getElementById('lightbox-modal')
+   .classList.contains("hidden")) {
+      closeLightbox();
+      return true;
+   }
+   
+   if (!document.getElementById("group-invite-modal")
+   .classList.contains("hidden")) {
+   closeGroupInviteModal()
+   return true;
+}
+if (!document.getElementById("create-group-modal")
+.classList.contains("hidden")) {
+closeCreateGroupModal()
+return true;
+}
+
+
    // Mobile chat open
    if (
-      window.innerWidth < 768 &&
-      !document.getElementById("main-panel")
-      .classList.contains("hidden")
+      window.innerWidth < 768
    ) {
       closeMobileChat();
       switchTab("chats");
@@ -6545,7 +7411,7 @@ window.addEventListener('resize', () =>
    }
    else
    {
-      if (activeTargetUserId)
+      if (activeTargetUserId || activeGroupId)
       {
          document.getElementById('sidebar-panel')
             .classList.add('hidden');

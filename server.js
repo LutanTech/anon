@@ -143,6 +143,14 @@ function dbGet(sql, params = []) {
    });
 }
 
+async function addColumn(table,column,definition){
+   try{
+       await dbRun(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+   }catch(err){
+       if(!err.message.includes('duplicate column name')) throw err;
+   }
+}
+
 function dbAll(sql, params = []) {
    return new Promise((resolve, reject) => {
       db.all(sql, params, (err, rows) => {
@@ -154,7 +162,6 @@ function dbAll(sql, params = []) {
 
 async function createTables(){
     try{
-        console.log('[DB] Creating users...');
         await dbRun(`
             CREATE TABLE IF NOT EXISTS users(
                 id TEXT PRIMARY KEY,
@@ -166,9 +173,7 @@ async function createTables(){
                 banned BOOLEAN DEFAULT 0
             )
         `);
-        console.log('[DB] users OK');
 
-        console.log('[DB] Creating contacts...');
         await dbRun(`
             CREATE TABLE IF NOT EXISTS contacts(
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -179,9 +184,7 @@ async function createTables(){
 				UNIQUE(user_id,contact_user_id)
             )
         `);
-        console.log('[DB] contacts OK');
 
-        console.log('[DB] Creating calls...');
         await dbRun(`
             CREATE TABLE IF NOT EXISTS calls(
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -194,9 +197,7 @@ async function createTables(){
                 duration INTEGER DEFAULT 0
             )
         `);
-        console.log('[DB] calls OK');
 
-        console.log('[DB] Creating statuses...');
         await dbRun(`
             CREATE TABLE IF NOT EXISTS statuses(
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -211,9 +212,7 @@ async function createTables(){
                 views TEXT DEFAULT '[]'
             )
         `);
-        console.log('[DB] statuses OK');
 
-        console.log('[DB] Creating messages...');
         await dbRun(`
             CREATE TABLE IF NOT EXISTS messages(
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -233,12 +232,13 @@ async function createTables(){
                 file_name TEXT,
                 file_type TEXT,
                 file_size TEXT,
-                deleted INTEGER DEFAULT 0
+                deleted INTEGER DEFAULT 0,
+                group_id INTEGER,
+                group_name TEXT,
+                type TEXT DEFAULT 'message'
             )
         `);
-        console.log('[DB] messages OK');
 
-        console.log('[DB] Creating pinned_messages...');
         await dbRun(`
             CREATE TABLE IF NOT EXISTS pinned_messages(
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -247,7 +247,6 @@ async function createTables(){
 				pinned_at INTEGER NOT NULL
             )
         `);
-        console.log('[DB] pinned_messages OK');
 
         await dbRun(`
             INSERT OR IGNORE INTO users(id,name)
@@ -257,48 +256,59 @@ async function createTables(){
       //   Groups
 
       await dbRun(`
-            CREATE TABLE IF NOT EXISTS groups (
-               id INTEGER PRIMARY KEY AUTOINCREMENT,
-               name TEXT NOT NULL,
-               description TEXT,
-               image TEXT,
-               type TEXT NOT NULL DEFAULT 'private',
-               owner_id TEXT NOT NULL,
-               created_at INTEGER NOT NULL
-            )
-      `);
-      
-      await dbRun(`
-            CREATE TABLE IF NOT EXISTS group_members (
-               id INTEGER PRIMARY KEY AUTOINCREMENT,
-               group_id INTEGER NOT NULL,
-               user_id TEXT NOT NULL,
-               role TEXT NOT NULL DEFAULT 'member',
-               joined_at INTEGER NOT NULL,
-               UNIQUE(group_id,user_id)
-            )
-      `);
-      
-      await dbRun(`
-            CREATE TABLE IF NOT EXISTS group_messages (
-               id INTEGER PRIMARY KEY AUTOINCREMENT,
-               group_id INTEGER NOT NULL,
-               user_id TEXT NOT NULL,
-               name TEXT,
-               text TEXT,
-               file TEXT,
-               file_name TEXT,
-               file_type TEXT,
-               file_size INTEGER,
-               reply_to TEXT,
-               time INTEGER NOT NULL,
-               reactions TEXT DEFAULT '{}',
-               edited INTEGER DEFAULT 0,
-               deleted INTEGER DEFAULT 0
-            )
-      `);
+         CREATE TABLE IF NOT EXISTS groups(
+             id INTEGER PRIMARY KEY AUTOINCREMENT,
+             name TEXT NOT NULL,
+             description TEXT,
+             image TEXT,
+             type TEXT NOT NULL DEFAULT 'private',
+             owner_id TEXT NOT NULL,
+             created_at INTEGER NOT NULL
+         )
+     `);
+     
+     await dbRun(`
+         CREATE TABLE IF NOT EXISTS group_members(
+             id INTEGER PRIMARY KEY AUTOINCREMENT,
+             group_id INTEGER NOT NULL,
+             user_id TEXT NOT NULL,
+             role TEXT NOT NULL DEFAULT 'member',
+             joined_at INTEGER NOT NULL,
+             UNIQUE(group_id,user_id)
+         )
+     `);
 
-        console.log('[DB] ALL TABLES CREATED');
+     await dbRun(`
+      CREATE TABLE IF NOT EXISTS group_invites (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          group_id INTEGER NOT NULL,
+          inviter_id TEXT NOT NULL,
+          user_id TEXT NOT NULL,
+          status TEXT DEFAULT 'pending',
+          created_at INTEGER NOT NULL
+      )
+      `);
+     
+     await dbRun(`
+         CREATE TABLE IF NOT EXISTS group_messages(
+             id INTEGER PRIMARY KEY AUTOINCREMENT,
+             group_id INTEGER NOT NULL,
+             user_id TEXT NOT NULL,
+             name TEXT,
+             text TEXT,
+             file TEXT,
+             file_name TEXT,
+             file_type TEXT,
+             file_size INTEGER,
+             reply_to TEXT,
+             time INTEGER NOT NULL,
+             read_by TEXT DEFAULT '[]',
+             reactions TEXT DEFAULT '{}',
+             edited INTEGER DEFAULT 0,
+             deleted INTEGER DEFAULT 0
+         )
+     `);
+
     }catch(e){
         console.error('[DB] CREATE TABLE ERROR:',e);
         throw e;
@@ -489,25 +499,28 @@ async function formatMessage(row,userId){
     try{reactions=row.reactions?JSON.parse(row.reactions):{}}catch{}
 
     return{
-        id:row.id,
-        chat_key:row.chat_key,
-        user_id:row.user_id,
-        target_user_id:row.target_user_id,
-        name:contact?.name||row.name||'Unknown',
-        text:row.deleted?null:row.text,
-        image:row.deleted?null:row.image,
-        file:row.deleted?null:row.file,
-        file_name:row.deleted?null:row.file_name,
-        file_type:row.deleted?null:row.file_type,
-        file_size:row.deleted?null:row.file_size,
-        reply_to:replyTo,
-        time:row.time,
-        read_by:readBy,
-        reactions:row.deleted?null:reactions,
-        edited:row.deleted?null:Boolean(row.edited),
-        forwarded:Boolean(row.forwarded),
-        deleted:row.deleted===1
-    };
+      id:row.id,
+      chat_key:row.chat_key,
+      user_id:row.user_id,
+      target_user_id:row.target_user_id,
+      name:contact?.name||row.name||'Unknown',
+      type:row.type||'message',
+      groupId:row.group_id||null,
+      groupName:row.group_name||null,
+      text:row.deleted?null:row.text,
+      image:row.deleted?null:row.image,
+      file:row.deleted?null:row.file,
+      file_name:row.deleted?null:row.file_name,
+      file_type:row.deleted?null:row.file_type,
+      file_size:row.deleted?null:row.file_size,
+      reply_to:replyTo,
+      time:row.time,
+      read_by:readBy,
+      reactions:row.deleted?null:reactions,
+      edited:row.deleted?null:Boolean(row.edited),
+      forwarded:Boolean(row.forwarded),
+      deleted:row.deleted===1
+  };
 }
 
 function formatCall(row) {
@@ -545,7 +558,120 @@ function invalidateUserCache(id) {
    cache.users.delete(id);
 }
 
+async function getCachedGroup(groupId){
+   if(cache.groups.has(groupId))
+       return cache.groups.get(groupId);
 
+   const group=await dbGet(
+       `SELECT * FROM groups WHERE id=?`,
+       [groupId]
+   );
+
+   if(group)
+       cache.groups.set(groupId,group);
+
+   return group||null;
+}
+
+async function getCachedGroupMembers(groupId){
+   if(cache.groupMembers.has(groupId))
+       return cache.groupMembers.get(groupId);
+
+   const rows=await dbAll(`
+       SELECT *
+       FROM group_members
+       WHERE group_id=?
+   `,[groupId]);
+
+   const members=new Map(
+       rows.map(m=>[m.user_id,m])
+   );
+
+   cache.groupMembers.set(groupId,members);
+
+   return members;
+}
+
+async function getCachedGroupHistory(groupId,userId){
+   const rows=await dbAll(`
+       SELECT *
+       FROM group_messages
+       WHERE group_id=?
+       ORDER BY time ASC
+       LIMIT 100
+   `,[groupId]);
+
+   const userIds=[
+       ...new Set(
+           rows.map(row=>row.user_id).filter(Boolean)
+       )
+   ];
+
+   let contacts=new Map();
+
+   if(userIds.length){
+       const placeholders=userIds.map(()=>'?').join(',');
+
+       const contactRows=await dbAll(`
+           SELECT contact_user_id,name
+           FROM contacts
+           WHERE user_id=?
+           AND contact_user_id IN (${placeholders})
+       `,[userId,...userIds]);
+
+       contacts=new Map(
+           contactRows.map(row=>[
+               row.contact_user_id,
+               row.name
+           ])
+       );
+   }
+
+   const messages=rows.map(row=>{
+       let replyTo=null;
+       let readBy=[];
+       let reactions={};
+
+       try{
+           replyTo=row.reply_to?JSON.parse(row.reply_to):null;
+       }catch{}
+
+       try{
+           readBy=row.read_by?JSON.parse(row.read_by):[];
+       }catch{}
+
+       try{
+           reactions=row.reactions?JSON.parse(row.reactions):{};
+       }catch{}
+
+       return{
+           id:row.id,
+           group_id:row.group_id,
+           user_id:row.user_id,
+           name:contacts.get(row.user_id)||row.name||'Unknown',
+           text:row.deleted?null:row.text,
+           file:row.deleted?null:row.file,
+           file_name:row.deleted?null:row.file_name,
+           file_type:row.deleted?null:row.file_type,
+           file_size:row.deleted?null:row.file_size,
+           reply_to:replyTo,
+           time:row.time,
+           read_by:readBy,
+           reactions:row.deleted?null:reactions,
+           edited:row.deleted?false:Boolean(row.edited),
+           deleted:Boolean(row.deleted)
+       };
+   });
+
+   cache.groupHistories.set(groupId,messages);
+
+   cache.groupLastMessages.set(
+       groupId,
+       messages[messages.length-1]||null
+   );
+
+   return messages;
+}
 async function getCachedMessage(msgId) {
    if (cache.messages.has(msgId)) {
       return cache.messages.get(msgId);
@@ -2017,33 +2143,140 @@ io.on('connection', (socket) => {
    });
 
    socket.on('toggleReaction',async(data={})=>{
-    const userId=sidToUserId.get(socket.id);
-    if(!userId)return;
 
-    const msg=await getCachedMessage(data.msgId),emoji=data.emoji;
-    if(!msg||!emoji)return;
-
-    const reactions=msg.reactions||{};
-    if(!reactions[emoji])reactions[emoji]=[];
-
-    const user=await getCachedUser(userId);
-    const i=reactions[emoji].findIndex(r=>r.userId===userId);
-
-    if(i>=0)reactions[emoji].splice(i,1);
-    else reactions[emoji].push({userId,name:user?.name||'Anonymous'});
-
-    if(!reactions[emoji].length)delete reactions[emoji];
-
-    await dbRun('UPDATE messages SET reactions=? WHERE id=?',[JSON.stringify(reactions),msg.id]);
-
-    const msgData={...msg,reactions};
-    setCachedMessage(msgData);
-
-    const payload={chatKey:msg.chat_key,msg:msgData};
-    socket.emit('messageUpdated',payload);
-    io.to(msg.target_user_id).emit('messageUpdated',payload);
-});
-   
+      const userId=sidToUserId.get(socket.id);
+      
+      if(!userId){console.log('[GROUP] No ID'); return};
+  
+      const msgId=Number(data.msgId);
+      const emoji=data.emoji;
+  
+      if(!msgId||!emoji){console.log('[GROUP] No msgId/emoi'); return};
+  
+      const user=await getCachedUser(userId);
+  
+      if(data.groupId){
+         const groupId=Number(data.groupId);
+     
+         if(!groupId){
+             return;
+         }
+     
+         const members=await getCachedGroupMembers(groupId);
+     
+         if(!members.has(userId)){
+             return;
+         }
+     
+         const history=cache.groupHistories.get(groupId)||[];
+         const msg=history.find(m=>m.id===msgId);
+     
+         if(!msg){
+             return;
+         }
+     
+         const reactions=msg.reactions||{};
+     
+         if(!reactions[emoji])
+             reactions[emoji]=[];
+     
+         const i=reactions[emoji].findIndex(
+             r=>r.userId===userId
+         );
+     
+         if(i>=0){
+             reactions[emoji].splice(i,1);
+         }else{
+             reactions[emoji].push({
+                 userId,
+                 name:user?.name||'Anonymous'
+             });
+         }
+     
+         if(!reactions[emoji].length)
+             delete reactions[emoji];
+     
+         await dbRun(
+             `UPDATE group_messages
+              SET reactions=?
+              WHERE id=? AND group_id=?`,
+             [
+                 JSON.stringify(reactions),
+                 msgId,
+                 groupId
+             ]
+         );
+     
+         msg.reactions=reactions;
+     
+         cache.groupHistories.set(
+             groupId,
+             history
+         );
+     
+         cache.groupLastMessages.set(
+             groupId,
+             history[history.length-1]||null
+         );
+     
+         console.log('[GROUP] Updated reactions',msg.reactions);
+     
+         io.to(`group:${groupId}`).emit(
+             'groupMessageUpdated',
+             {
+                 groupId,
+                 msg
+             }
+         );
+     
+         return;
+     }
+  
+      const msg=await getCachedMessage(msgId);
+  
+      if(!msg)return;
+  
+      const reactions=msg.reactions||{};
+  
+      if(!reactions[emoji])
+          reactions[emoji]=[];
+  
+      const i=reactions[emoji].findIndex(
+          r=>r.userId===userId
+      );
+  
+      if(i>=0){
+          reactions[emoji].splice(i,1);
+      }else{
+          reactions[emoji].push({
+              userId,
+              name:user?.name||'Anonymous'
+          });
+      }
+  
+      if(!reactions[emoji].length)
+          delete reactions[emoji];
+  
+      await dbRun(
+          'UPDATE messages SET reactions=? WHERE id=?',
+          [JSON.stringify(reactions),msg.id]
+      );
+  
+      const msgData={
+          ...msg,
+          reactions
+      };
+  
+      setCachedMessage(msgData);
+  
+      const payload={
+          chatKey:msg.chat_key,
+          msg:msgData
+      };
+  
+      socket.emit('messageUpdated',payload);
+      io.to(msg.target_user_id).emit('messageUpdated',payload);
+  });
    
    socket.on('deleteMessage', async (data = {}) => {
       const userId = sidToUserId.get(socket.id);
@@ -2829,39 +3062,463 @@ io.on('connection', (socket) => {
       const name=data.name.trim();
       const description=(data.description||'').trim();
       const type=data.type==='public'?'public':'private';
+      const image=data.image||null;
       const now=Date.now();
   
       const result=await dbRun(`
           INSERT INTO groups
           (name,description,image,type,owner_id,created_at)
           VALUES(?,?,?,?,?,?)
-      `,[name,description,data.image||null,type,userId,now]);
+      `,[name,description,image,type,userId,now]);
   
       const group={
           id:result.lastID,
           name,
           description,
-          image:data.image||null,
+          image,
           type,
           owner_id:userId,
           created_at:now
       };
   
       await dbRun(`
-         INSERT INTO group_members
-         (group_id,user_id,role,joined_at)
-         VALUES(?,?,?,?)
-     `,[group.id,userId,'owner',now]);
+          INSERT INTO group_members
+          (group_id,user_id,role,joined_at)
+          VALUES(?,?,?,?)
+      `,[group.id,userId,'owner',now]);
   
       cache.groups.set(group.id,group);
-      cache.groupMembers.set(group.id,new Map([
-          [userId,{user_id:userId,role:'owner'}]
-      ]));
+  
+      cache.groupMembers.set(
+          group.id,
+          new Map([
+              [userId,{
+                  group_id:group.id,
+                  user_id:userId,
+                  role:'owner',
+                  joined_at:now
+              }]
+          ])
+      );
+  
+      cache.groupHistories.set(group.id,[]);
+      cache.groupLastMessages.set(group.id,null);
   
       socket.join(`group:${group.id}`);
-      socket.emit('groupCreated',group);
-  });
   
+      socket.emit('groupCreated',{
+          ...group,
+          role:'owner',
+          memberCount:1
+      });
+  });
+
+  socket.on('loadGroups',async()=>{
+   const userId=sidToUserId.get(socket.id);
+   if(!userId)return;
+
+   const rows=await dbAll(`
+       SELECT g.*,gm.role
+       FROM groups g
+       JOIN group_members gm
+           ON gm.group_id=g.id
+       WHERE gm.user_id=?
+       ORDER BY g.created_at DESC
+   `,[userId]);
+
+   const groups=[];
+
+   for(const row of rows){
+       cache.groups.set(row.id,row);
+
+       const members=await getCachedGroupMembers(row.id);
+
+       if(!cache.groupHistories.has(row.id))
+           await getCachedGroupHistory(row.id, userId);
+
+       socket.join(`group:${row.id}`);
+
+       groups.push({
+         ...row,
+         members: [...members.values()],
+         memberCount: members.size,
+         lastMessage: cache.groupLastMessages.get(row.id) || null
+     });
+   }
+
+   socket.emit('groupsLoaded',groups);
+});
+  
+socket.on('loadPublicGroups',async()=>{
+   const rows=await dbAll(`
+       SELECT g.*
+       FROM groups g
+       WHERE g.type='public'
+       ORDER BY g.created_at DESC
+   `);
+
+   const groups=[];
+
+   for(const row of rows){
+       cache.groups.set(row.id,row);
+
+       const members=await getCachedGroupMembers(row.id);
+
+       groups.push({
+           ...row,
+           memberCount:members.size
+       });
+   }
+
+   socket.emit('publicGroupsLoaded',groups);
+});
+
+socket.on('joinGroup', async (data = {}) => {
+   const userId = sidToUserId.get(socket.id);
+   const groupId = Number(data.groupId);
+
+   if (!userId || !groupId) return;
+
+   const group = await getCachedGroup(groupId);
+
+   if (!group) return;
+
+   let members = await getCachedGroupMembers(groupId);
+
+   if (members.has(userId)) {
+       socket.join(`group:${groupId}`);
+
+       const member = members.get(userId);
+
+       socket.emit('groupJoined', {
+           ...group,
+           role: member.role,
+           memberCount: members.size
+       });
+
+       return;
+   }
+
+   if (group.type !== 'public') {
+       return;
+   }
+
+   const now = Date.now();
+
+   await dbRun(`
+       INSERT INTO group_members
+       (group_id,user_id,role,joined_at)
+       VALUES(?,?,?,?)
+   `, [
+       groupId,
+       userId,
+       'member',
+       now
+   ]);
+
+   members.set(userId, {
+       group_id: groupId,
+       user_id: userId,
+       role: 'member',
+       joined_at: now
+   });
+
+   cache.groupMembers.set(groupId, members);
+
+   socket.join(`group:${groupId}`);
+
+});
+
+socket.on('leaveGroup',async(data={})=>{
+   const userId=sidToUserId.get(socket.id);
+   const groupId=Number(data.groupId);
+
+   if(!userId||!groupId)return;
+
+   const group=await getCachedGroup(groupId);
+   if(!group)return;
+
+   if(group.owner_id===userId){
+       socket.emit('groupError',{
+           message:'The group owner cannot leave the group'
+       });
+       return;
+   }
+
+   await dbRun(`
+       DELETE FROM group_members
+       WHERE group_id=? AND user_id=?
+   `,[groupId,userId]);
+
+   socket.leave(`group:${groupId}`);
+
+   const members=cache.groupMembers.get(groupId);
+
+   if(members){
+       members.delete(userId);
+       cache.groupMembers.set(groupId,members);
+   }
+
+   socket.emit('groupLeft',{
+       groupId
+   });
+});
+
+socket.on('groupMessage',async(data={})=>{
+   const userId=sidToUserId.get(socket.id);
+   if(!userId||!data.groupId)return;
+
+   const members=await getCachedGroupMembers(data.groupId);
+   if(!members.has(userId))return;
+
+   const text=(data.text||'').trim();
+   const file=data.file||null;
+
+   if(!text&&!file)return;
+
+   const user=await getCachedUser(userId);
+   const name=user?.name||'Anonymous';
+   const now=Date.now();
+
+   const replyTo=data.replyTo?
+       JSON.stringify(data.replyTo):
+       null;
+
+   const result=await dbRun(`
+       INSERT INTO group_messages
+       (
+           group_id,
+           user_id,
+           name,
+           text,
+           file,
+           file_name,
+           file_type,
+           file_size,
+           reply_to,
+           time,
+           read_by,
+           reactions,
+           edited,
+           deleted
+       )
+       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+   `,[
+       data.groupId,
+       userId,
+       name,
+       text,
+       file,
+       data.fileName||null,
+       data.fileType||null,
+       data.fileSize||null,
+       replyTo,
+       now,
+       '[]',
+       '{}',
+       0,
+       0
+   ]);
+
+   const message={
+       id:result.lastID,
+       group_id:data.groupId,
+       user_id:userId,
+       name,
+       text,
+       file,
+       file_name:data.fileName||null,
+       file_type:data.fileType||null,
+       file_size:data.fileSize||null,
+       reply_to:data.replyTo||null,
+       time:now,
+       read_by:[],
+       reactions:{},
+       edited:false,
+       deleted:false
+   };
+
+   let history=cache.groupHistories.get(data.groupId)||[];
+
+   history.push(message);
+
+   if(history.length>100)
+       history=history.slice(-100);
+
+   cache.groupHistories.set(
+       data.groupId,
+       history
+   );
+
+   cache.groupLastMessages.set(
+       data.groupId,
+       message
+   );
+
+   io.to(`group:${data.groupId}`)
+       .emit('groupMessage',message);
+
+   io.to(`group:${data.groupId}`)
+       .emit('groupLastMessage',{
+           groupId:data.groupId,
+           message
+       });
+});
+
+socket.on('inviteToGroup',async(data={})=>{
+   const userId=sidToUserId.get(socket.id);
+   const groupId=Number(data.groupId);
+   const targetUserId=data.targetUserId;
+   if(!userId||!groupId||!targetUserId)return;
+
+
+
+   const group=await dbGet(`SELECT * FROM groups WHERE id=?`,[groupId]);
+   if(!group)return;
+
+   const inviter=await getCachedUser(userId);
+   const now=Date.now();
+
+   await dbRun(`
+       INSERT INTO group_invites
+       (group_id,inviter_id,user_id,status,created_at)
+       VALUES(?,?,?,?,?)
+   `,[groupId,userId,targetUserId,'pending',now]);
+
+   const chatKey=getChatKey(userId,targetUserId);
+
+   const result=await dbRun(`
+      INSERT INTO messages
+      (chat_key,user_id,target_user_id,name,text,time,read_by,reactions,edited,forwarded,deleted,type,group_id,group_name)
+      VALUES(?,?,?,?,?,?,?,'{}',0,0,0,?,?,?)
+  `,[chatKey,userId,targetUserId,inviter?.name||'Anonymous','Group Invite',now,'[]','group_invite',groupId,group.name]);
+   const row=await dbGet(`SELECT * FROM messages WHERE id=?`,[result.lastID]);
+   const msgData=formatMessage(row);
+
+   setCachedMessage(msgData);
+
+   if(cache.histories.has(chatKey))
+       cache.histories.get(chatKey).push(msgData);
+
+   socket.emit('directMessage',msgData);
+   io.to(targetUserId).emit('directMessage',msgData);
+});
+
+socket.on('acceptGroupInvite', async (data = {}) => {
+   const userId = sidToUserId.get(socket.id);
+   const groupId = Number(data.groupId);
+
+   if (!userId || !groupId) return;
+
+   const invite = await dbGet(`
+       SELECT *
+       FROM group_invites
+       WHERE group_id = ?
+       AND user_id = ?
+       AND status = 'pending'
+       LIMIT 1
+   `, [groupId, userId]);
+
+   if (!invite) {
+       socket.emit('groupError', {
+           message: 'Link expired'
+       });
+       return;
+   }
+
+   const now = Date.now();
+
+   await dbRun(`
+       INSERT OR IGNORE INTO group_members
+       (group_id, user_id, role, joined_at)
+       VALUES (?, ?, 'member', ?)
+   `, [groupId, userId, now]);
+
+   await dbRun(`
+       UPDATE group_invites
+       SET status = 'accepted'
+       WHERE id = ?
+   `, [invite.id]);
+
+   const members = await getCachedGroupMembers(groupId);
+
+   members.set(userId, {
+       group_id: groupId,
+       user_id: userId,
+       role: 'member',
+       joined_at: now
+   });
+
+   cache.groupMembers.set(groupId, members);
+
+   const group = await getCachedGroup(groupId);
+
+   socket.join(`group:${groupId}`);
+
+   io.to(userId).emit('groupJoined', {
+       ...group,
+       role: 'member',
+       memberCount: members.size
+   });
+   io.to(`group:${group.id}`).emit('userJoined', {
+      ...group,
+      role: 'member',
+      memberCount: members.size
+  });
+   
+
+   socket.emit('loadGroups');
+});
+socket.on('rejectGroupInvite', async (data = {}) => {
+   const userId = sidToUserId.get(socket.id);
+   const groupId = Number(data.groupId);
+
+   if (!userId || !groupId) return;
+
+   await dbRun(`
+       UPDATE group_invites
+       SET status = 'rejected'
+       WHERE group_id = ?
+       AND user_id = ?
+       AND status = 'pending'
+   `, [groupId, userId]);
+
+   socket.emit('groupInviteRejected', {
+       groupId
+   });
+});
+
+socket.on('loadGroupHistory', async (data = {}) => {
+   const userId = sidToUserId.get(socket.id);
+   const groupId = Number(data.groupId);
+   const offset = Number(data.offset) || 0;
+   const limit = Math.min(Number(data.limit) || 50, 100);
+
+   if (!userId || !groupId) return;
+
+   const members = await getCachedGroupMembers(groupId);
+
+   if (!members.has(userId)) return;
+
+   let history = cache.groupHistories.get(groupId);
+
+   if (!history) {
+       history = await getCachedGroupHistory(groupId, userId);
+   }
+
+   const messages = history
+       .slice()
+       .reverse()
+       .slice(offset, offset + limit)
+       .reverse();
+
+   socket.emit('groupHistoryLoaded', {
+       groupId,
+       messages,
+       hasMore: offset + limit < history.length
+   });
+});
+
 });
 
 async function loadStatusCache(userId){
