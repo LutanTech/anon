@@ -1,62 +1,88 @@
-[2026-08-11T08:44:02.600Z] [SERVER] ====================================================
-[2026-08-11T08:44:02.602Z] [SERVER] SERVER STARTUP INITIATED
-[2026-08-11T08:44:02.602Z] [SERVER] ====================================================
-[2026-08-11T08:44:02.995Z] [SERVER] [FCM SUCCESS] Firebase Admin SDK successfully initialized
-[2026-08-11T08:44:03.036Z] [SERVER] Connected to SQLite database
-[2026-08-11T08:44:03.046Z] [SERVER] Failed to initialize database schema {"error":"SQLITE_ERROR: near \"name\": syntax error"}
-[2026-08-11T08:44:03.047Z] [SERVER] Failed to initialize database schema {"error":"SQLITE_ERROR: near \"name\": syntax error"}
-[2026-08-11T08:45:19.242Z] [SERVER] ====================================================
-[2026-08-11T08:45:19.243Z] [SERVER] SERVER STARTUP INITIATED
-[2026-08-11T08:45:19.243Z] [SERVER] ====================================================
-[2026-08-11T08:45:19.332Z] [SERVER] [FCM SUCCESS] Firebase Admin SDK successfully initialized
-[2026-08-11T08:45:19.363Z] [SERVER] Connected to SQLite database
-[2026-08-11T08:45:19.370Z] [SERVER] Failed to initialize database schema {"error":"SQLITE_ERROR: near \"name\": syntax error"}
-[2026-08-11T08:45:19.370Z] [SERVER] Failed to initialize database schema {"error":"SQLITE_ERROR: near \"name\": syntax error"}
-[2026-08-11T08:45:43.971Z] [SERVER] ====================================================
-[2026-08-11T08:45:43.972Z] [SERVER] SERVER STARTUP INITIATED
-[2026-08-11T08:45:43.972Z] [SERVER] ====================================================
-[2026-08-11T08:45:44.082Z] [SERVER] [FCM SUCCESS] Firebase Admin SDK successfully initialized
-[2026-08-11T08:45:44.122Z] [SERVER] Connected to SQLite database
-[2026-08-11T08:45:44.133Z] [SERVER] Failed to initialize database schema {"error":"SQLITE_ERROR: near \"name\": syntax error"}
-[2026-08-11T08:45:44.133Z] [SERVER] Failed to initialize database schema {"error":"SQLITE_ERROR: near \"name\": syntax error"}
-[2026-08-11T08:46:20.033Z] [SERVER] ====================================================
-[2026-08-11T08:46:20.035Z] [SERVER] SERVER STARTUP INITIATED
-[2026-08-11T08:46:20.035Z] [SERVER] ====================================================
-[2026-08-11T08:46:20.115Z] [SERVER] [FCM SUCCESS] Firebase Admin SDK successfully initialized
-[2026-08-11T08:46:20.144Z] [SERVER] Connected to SQLite database
-[2026-08-11T08:46:20.151Z] [SERVER] Failed to initialize database schema {"error":"SQLITE_ERROR: near \"name\": syntax error"}
-[2026-08-11T08:46:20.151Z] [SERVER] Failed to initialize database schema {"error":"SQLITE_ERROR: near \"name\": syntax error"}
-[2026-08-11T08:53:53.758Z] [SERVER] ====================================================
-[2026-08-11T08:53:53.759Z] [SERVER] SERVER STARTUP INITIATED
-[2026-08-11T08:53:53.759Z] [SERVER] ====================================================
-[2026-08-11T08:53:53.842Z] [SERVER] [FCM SUCCESS] Firebase Admin SDK successfully initialized
-[2026-08-11T08:53:53.865Z] [DB] Creating users...
-[2026-08-11T08:53:53.873Z] [SERVER] Connected to SQLite database
-[2026-08-11T08:53:53.884Z] [DB] users OK
-[2026-08-11T08:53:53.885Z] [DB] Creating contacts...
-[2026-08-11T08:54:45.067Z] [SERVER] ====================================================
-[2026-08-11T08:54:45.069Z] [SERVER] SERVER STARTUP INITIATED
-[2026-08-11T08:54:45.069Z] [SERVER] ====================================================
-[2026-08-11T08:54:45.182Z] [SERVER] [FCM SUCCESS] Firebase Admin SDK successfully initialized
-[2026-08-11T08:54:45.213Z] [DB] Creating users...
-[2026-08-11T08:54:45.223Z] [SERVER] Connected to SQLite database
-[2026-08-11T08:54:45.229Z] [DB] users OK
-[2026-08-11T08:54:45.229Z] [DB] Creating contacts...
-[2026-08-11T08:54:45.243Z] [DB] contacts OK
-[2026-08-11T08:54:45.243Z] [DB] Creating calls...
-[2026-08-11T08:54:45.249Z] [DB] calls OK
-[2026-08-11T08:54:45.249Z] [DB] Creating statuses...
-[2026-08-11T08:54:45.255Z] [DB] statuses OK
-[2026-08-11T08:54:45.255Z] [DB] Creating messages...
-[2026-08-11T08:54:45.261Z] [DB] messages OK
-[2026-08-11T08:54:45.261Z] [DB] Creating pinned_messages...
-[2026-08-11T08:54:45.267Z] [DB] pinned_messages OK
-[2026-08-11T08:54:45.273Z] [DB] ALL TABLES CREATED
-[2026-08-11T08:54:45.276Z] [SERVER] [SERVER] Node server successfully started and listening on 0.0.0.0:9000
-[2026-08-11T08:58:18.726Z] /statuses/1786438695306_51bxykgo5ot.jpg video /statuses/1786438695299_pal8z6rnrar.mp4
-[2026-08-11T08:58:18.727Z] D:\PYTHON\AnonChat 2\public\statuses\1786438695299_pal8z6rnrar.mp4
-[2026-08-11T09:00:12.564Z] [STATUS VIEW] Cached: 1 [{"userId":"usr_402761","name":"Georgina","viewedAt":1786438812564,"statusId":1}]
-[2026-08-11T09:00:15.892Z] [STATUS VIEW] Cached: 3 [{"userId":"usr_402761","name":"Georgina","viewedAt":1786438815892,"statusId":3}]
-[2026-08-11T09:01:15.572Z] [STATUS VIEW] Cached: 4 [{"userId":"usr_ogx128y","name":"Lutan","viewedAt":1786438875572,"statusId":4}]
-[2026-08-11T09:09:31.850Z] [STATUS VIEW] Cached: 5 [{"userId":"usr_402761","name":"Georgina","viewedAt":1786439371850,"statusId":5}]
-[2026-08-11T09:46:18.355Z] [SERVER] [SERVER] User disconnected finalized "usr_402761"
+[2026-08-11T14:40:48.878Z] [DB ROWS] [{"id":13,"chat_key":"admin_usr_ogx128y","user_id":"usr_ogx128y","target_user_id":"admin","name":"Lutan","text":null,"image":null,"reply_to":null,"time":1786451299444,"read_by":"[{\"userId\":\"admin\",\"name\":\"Admin\",\"time\":1786459067361}]","reactions":"{}","edited":0,"forwarded":1,"file":null,"file_name":null,"file_type":null,"file_size":null,"deleted":0},{"id":16,"chat_key":"admin_usr_ogx128y","user_id":"usr_ogx128y","target_user_id":"admin","name":"Lutan","text":"<button onclick=\"contextActionReact('😮')\" class=\"p-1.5 hover:bg-slate-800 rounded-xl text-lg transition active:scale-125\">😮</button>","image":null,"reply_to":null,"time":1786451688046,"read_by":"[{\"userId\":\"admin\",\"name\":\"Admin\",\"time\":1786459067370}]","reactions":"{}","edited":0,"forwarded":1,"file":null,"file_name":null,"file_type":null,"file_size":null,"deleted":0},{"id":17,"chat_key":"admin_usr_ogx128y","user_id":"usr_ogx128y","target_user_id":"admin","name":"Lutan","text":"","image":null,"reply_to":null,"time":1786451881359,"read_by":"[{\"userId\":\"admin\",\"name\":\"Admin\",\"time\":1786459067378}]","reactions":"{}","edited":0,"forwarded":1,"file":null,"file_name":null,"file_type":null,"file_size":"3101","deleted":1},{"id":18,"chat_key":"admin_usr_ogx128y","user_id":"usr_ogx128y","target_user_id":"admin","name":"Lutan","text":"","image":null,"reply_to":null,"time":1786451881362,"read_by":"[{\"userId\":\"admin\",\"name\":\"Admin\",\"time\":1786459067385}]","reactions":"{}","edited":0,"forwarded":1,"file":null,"file_name":null,"file_type":null,"file_size":null,"deleted":1},{"id":45,"chat_key":"admin_usr_ogx128y","user_id":"usr_ogx128y","target_user_id":"admin","name":"Lutan","text":"","image":null,"reply_to":null,"time":1786458951374,"read_by":"[{\"userId\":\"admin\",\"name\":\"Admin\",\"time\":1786459067394}]","reactions":"{}","edited":0,"forwarded":0,"file":"/uploads/messages/1786458951273-v0vuny0yri.jpeg","file_name":"anon-undefined.jpeg","file_type":"image/jpeg","file_size":"170249","deleted":0},{"id":46,"chat_key":"admin_usr_ogx128y","user_id":"admin","target_user_id":"usr_ogx128y","name":"Admin","text":"yoh","image":null,"reply_to":null,"time":1786459070954,"read_by":"[{\"userId\":\"usr_ogx128y\",\"name\":\"Lutan\",\"time\":1786459134977}]","reactions":"{}","edited":0,"forwarded":0,"file":null,"file_name":null,"file_type":null,"file_size":null,"deleted":0},{"id":47,"chat_key":"admin_usr_ogx128y","user_id":"usr_ogx128y","target_user_id":"admin","name":"Lutan","text":"thiiiis","image":null,"reply_to":"{\"id\":45,\"name\":\"Lutan\",\"text\":\"\",\"file\":\"/uploads/messages/1786458951273-v0vuny0yri.jpeg\"}","time":1786459109581,"read_by":"[{\"userId\":\"admin\",\"name\":\"Admin\",\"time\":1786459142057}]","reactions":"{}","edited":0,"forwarded":0,"file":null,"file_name":null,"file_type":null,"file_size":null,"deleted":0}]
+[2026-08-11T14:40:48.879Z] [FORMATTED] {"id":13,"chat_key":"admin_usr_ogx128y","user_id":"usr_ogx128y","target_user_id":"admin","name":"Lutan","text":null,"image":null,"file":null,"file_name":null,"file_type":null,"file_size":null,"reply_to":null,"time":1786451299444,"read_by":[{"userId":"admin","name":"Admin","time":1786459067361}],"reactions":{},"edited":false,"forwarded":true,"deleted":false}
+[2026-08-11T14:40:48.879Z] [FORMATTED] {"id":16,"chat_key":"admin_usr_ogx128y","user_id":"usr_ogx128y","target_user_id":"admin","name":"Lutan","text":"<button onclick=\"contextActionReact('😮')\" class=\"p-1.5 hover:bg-slate-800 rounded-xl text-lg transition active:scale-125\">😮</button>","image":null,"file":null,"file_name":null,"file_type":null,"file_size":null,"reply_to":null,"time":1786451688046,"read_by":[{"userId":"admin","name":"Admin","time":1786459067370}],"reactions":{},"edited":false,"forwarded":true,"deleted":false}
+[2026-08-11T14:40:48.880Z] [FORMATTED] {"id":17,"chat_key":"admin_usr_ogx128y","user_id":"usr_ogx128y","target_user_id":"admin","name":"Lutan","text":null,"image":null,"file":null,"file_name":null,"file_type":null,"file_size":null,"reply_to":null,"time":1786451881359,"read_by":[{"userId":"admin","name":"Admin","time":1786459067378}],"reactions":null,"edited":null,"forwarded":true,"deleted":true}
+[2026-08-11T14:40:48.880Z] [FORMATTED] {"id":18,"chat_key":"admin_usr_ogx128y","user_id":"usr_ogx128y","target_user_id":"admin","name":"Lutan","text":null,"image":null,"file":null,"file_name":null,"file_type":null,"file_size":null,"reply_to":null,"time":1786451881362,"read_by":[{"userId":"admin","name":"Admin","time":1786459067385}],"reactions":null,"edited":null,"forwarded":true,"deleted":true}
+[2026-08-11T14:40:48.881Z] [FORMATTED] {"id":45,"chat_key":"admin_usr_ogx128y","user_id":"usr_ogx128y","target_user_id":"admin","name":"Lutan","text":"","image":null,"file":"/uploads/messages/1786458951273-v0vuny0yri.jpeg","file_name":"anon-undefined.jpeg","file_type":"image/jpeg","file_size":"170249","reply_to":null,"time":1786458951374,"read_by":[{"userId":"admin","name":"Admin","time":1786459067394}],"reactions":{},"edited":false,"forwarded":false,"deleted":false}
+[2026-08-11T14:40:48.881Z] [FORMATTED] {"id":46,"chat_key":"admin_usr_ogx128y","user_id":"admin","target_user_id":"usr_ogx128y","name":"Admin","text":"yoh","image":null,"file":null,"file_name":null,"file_type":null,"file_size":null,"reply_to":null,"time":1786459070954,"read_by":[{"userId":"usr_ogx128y","name":"Lutan","time":1786459134977}],"reactions":{},"edited":false,"forwarded":false,"deleted":false}
+[2026-08-11T14:40:48.882Z] [FORMATTED] {"id":47,"chat_key":"admin_usr_ogx128y","user_id":"usr_ogx128y","target_user_id":"admin","name":"Lutan","text":"thiiiis","image":null,"file":null,"file_name":null,"file_type":null,"file_size":null,"reply_to":{"id":45,"name":"Lutan","text":"","file":"/uploads/messages/1786458951273-v0vuny0yri.jpeg"},"time":1786459109581,"read_by":[{"userId":"admin","name":"Admin","time":1786459142057}],"reactions":{},"edited":false,"forwarded":false,"deleted":false}
+[2026-08-11T14:42:25.468Z] [SERVER] ====================================================
+[2026-08-11T14:42:25.469Z] [SERVER] SERVER STARTUP INITIATED
+[2026-08-11T14:42:25.469Z] [SERVER] ====================================================
+[2026-08-11T14:42:25.561Z] [SERVER] [FCM SUCCESS] Firebase Admin SDK successfully initialized
+[2026-08-11T14:42:25.586Z] [DB] Creating users...
+[2026-08-11T14:42:25.588Z] [SERVER] Connected to SQLite database
+[2026-08-11T14:42:25.599Z] [DB] users OK
+[2026-08-11T14:42:25.599Z] [DB] Creating contacts...
+[2026-08-11T14:42:25.600Z] [DB] contacts OK
+[2026-08-11T14:42:25.600Z] [DB] Creating calls...
+[2026-08-11T14:42:25.601Z] [DB] calls OK
+[2026-08-11T14:42:25.601Z] [DB] Creating statuses...
+[2026-08-11T14:42:25.601Z] [DB] statuses OK
+[2026-08-11T14:42:25.601Z] [DB] Creating messages...
+[2026-08-11T14:42:25.602Z] [DB] messages OK
+[2026-08-11T14:42:25.602Z] [DB] Creating pinned_messages...
+[2026-08-11T14:42:25.603Z] [DB] pinned_messages OK
+[2026-08-11T14:42:25.604Z] [DB] ALL TABLES CREATED
+[2026-08-11T14:42:25.606Z] [SERVER] [SERVER] Node server successfully started and listening on 0.0.0.0:9000
+[2026-08-11T14:48:29.714Z] [SERVER] ====================================================
+[2026-08-11T14:48:29.716Z] [SERVER] SERVER STARTUP INITIATED
+[2026-08-11T14:48:29.716Z] [SERVER] ====================================================
+[2026-08-11T14:48:29.837Z] [SERVER] [FCM SUCCESS] Firebase Admin SDK successfully initialized
+[2026-08-11T14:48:29.867Z] [DB] Creating users...
+[2026-08-11T14:48:29.877Z] [SERVER] Connected to SQLite database
+[2026-08-11T14:48:29.883Z] [DB] users OK
+[2026-08-11T14:48:29.883Z] [DB] Creating contacts...
+[2026-08-11T14:48:29.884Z] [DB] contacts OK
+[2026-08-11T14:48:29.885Z] [DB] Creating calls...
+[2026-08-11T14:48:29.885Z] [DB] calls OK
+[2026-08-11T14:48:29.885Z] [DB] Creating statuses...
+[2026-08-11T14:48:29.886Z] [DB] statuses OK
+[2026-08-11T14:48:29.886Z] [DB] Creating messages...
+[2026-08-11T14:48:29.887Z] [DB] messages OK
+[2026-08-11T14:48:29.887Z] [DB] Creating pinned_messages...
+[2026-08-11T14:48:29.887Z] [DB] pinned_messages OK
+[2026-08-11T14:48:29.888Z] [DB] ALL TABLES CREATED
+[2026-08-11T14:48:29.890Z] [SERVER] [SERVER] Node server successfully started and listening on 0.0.0.0:9000
+[2026-08-11T14:49:25.330Z] [SERVER] ====================================================
+[2026-08-11T14:49:25.333Z] [SERVER] SERVER STARTUP INITIATED
+[2026-08-11T14:49:25.333Z] [SERVER] ====================================================
+[2026-08-11T14:49:25.478Z] [SERVER] [FCM SUCCESS] Firebase Admin SDK successfully initialized
+[2026-08-11T14:49:25.520Z] [DB] Creating users...
+[2026-08-11T14:49:25.529Z] [SERVER] Connected to SQLite database
+[2026-08-11T14:49:25.539Z] [DB] users OK
+[2026-08-11T14:49:25.540Z] [DB] Creating contacts...
+[2026-08-11T14:49:25.541Z] [DB] contacts OK
+[2026-08-11T14:49:25.541Z] [DB] Creating calls...
+[2026-08-11T14:49:25.541Z] [DB] calls OK
+[2026-08-11T14:49:25.541Z] [DB] Creating statuses...
+[2026-08-11T14:49:25.542Z] [DB] statuses OK
+[2026-08-11T14:49:25.542Z] [DB] Creating messages...
+[2026-08-11T14:49:25.542Z] [DB] messages OK
+[2026-08-11T14:49:25.542Z] [DB] Creating pinned_messages...
+[2026-08-11T14:49:25.543Z] [DB] pinned_messages OK
+[2026-08-11T14:49:25.544Z] [DB] ALL TABLES CREATED
+[2026-08-11T14:49:25.552Z] [SERVER] [SERVER] Node server successfully started and listening on 0.0.0.0:9000
+[2026-08-11T14:49:47.373Z] [SERVER] ====================================================
+[2026-08-11T14:49:47.375Z] [SERVER] SERVER STARTUP INITIATED
+[2026-08-11T14:49:47.375Z] [SERVER] ====================================================
+[2026-08-11T14:49:47.521Z] [SERVER] [FCM SUCCESS] Firebase Admin SDK successfully initialized
+[2026-08-11T14:49:47.556Z] [DB] Creating users...
+[2026-08-11T14:49:47.567Z] [SERVER] Connected to SQLite database
+[2026-08-11T14:49:47.573Z] [DB] users OK
+[2026-08-11T14:49:47.573Z] [DB] Creating contacts...
+[2026-08-11T14:49:47.575Z] [DB] contacts OK
+[2026-08-11T14:49:47.575Z] [DB] Creating calls...
+[2026-08-11T14:49:47.576Z] [DB] calls OK
+[2026-08-11T14:49:47.576Z] [DB] Creating statuses...
+[2026-08-11T14:49:47.576Z] [DB] statuses OK
+[2026-08-11T14:49:47.576Z] [DB] Creating messages...
+[2026-08-11T14:49:47.577Z] [DB] messages OK
+[2026-08-11T14:49:47.577Z] [DB] Creating pinned_messages...
+[2026-08-11T14:49:47.578Z] [DB] pinned_messages OK
+[2026-08-11T14:49:47.579Z] [DB] ALL TABLES CREATED
+[2026-08-11T14:49:47.584Z] [SERVER] [SERVER] Node server successfully started and listening on 0.0.0.0:9000
+[2026-08-11T15:20:38.142Z] [STATUS VIEW] Cached: 6 [{"userId":"admin","name":"Admin","viewedAt":1786461638142,"statusId":6}]
+[2026-08-11T15:20:39.512Z] [STATUS VIEW] Cached: 3 [{"userId":"usr_402761","name":"Georgina","viewedAt":1786438815892,"statusId":3},{"userId":"admin","name":"Admin","viewedAt":1786461639512,"statusId":3}]
+[2026-08-11T15:20:41.272Z] [STATUS VIEW] Cached: 1 [{"userId":"usr_402761","name":"Georgina","viewedAt":1786438812564,"statusId":1},{"userId":"admin","name":"Admin","viewedAt":1786461641272,"statusId":1}]
+[2026-08-11T15:50:44.260Z] [SERVER] [SERVER] User disconnected finalized "admin"

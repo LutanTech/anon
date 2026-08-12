@@ -471,10 +471,14 @@ body {
             </div>
 
             <!-- Status Replier -->
-            <div id="status-replier" class="bottom-0 fixed hidden inset-0 z-[99999]  bg-[#393939] flex flex-col" style="padding:40px; top:75%;   border-top-left-radius: 40px;
+            <div id="status-replier" class="bottom-0 fixed hidden inset-0 z-[99999]  bg-[#393939] flex flex-col" style="top:85%;   border-top-left-radius: 40px;
     border-top-right-radius: 40px;">
 
-                <div class="p-2 flex justify-between" style="z-index: 500;" onclick="event.stopImmediatePropagation(); pauseStatus()">
+                <div class="bg-white rounded-xl close-locator" style="padding: 4px; width:
+                    90px; margin:5px auto;" onclick="closeStatusReplyModal()"></div>
+                <div class="p-2 flex justify-between" style="z-index: 500; margin-top:10px" onclick="event.stopImmediatePropagation(); pauseStatus()">
+
+                    
 
                     <div class="reply-status-div gap-1 w-full justify-between flex align-center relative" id="reply-status-div" style="max-width: 600px; margin:auto">
 
@@ -841,7 +845,7 @@ body {
                   <i class="fa-solid fa-thumbtack text-amber-400 w-4 text-center"></i>
                   <span id="context-pin-label">Pin Message</span>
                </button>
-               <button onclick="contextActionCopy()" class="w-full px-3 py-2.5 text-left hover:bg-slate-800/80 rounded-xl flex items-center gap-3 transition">
+               <button onclick="contextActionCopy()" class="w-full px-3 py-2.5 text-left hover:bg-slate-800/80 rounded-xl flex items-center gap-3 transition copy-label">
                   <i class="fa-regular fa-copy text-cyan-400 w-4 text-center"></i>
                   <span>Copy Text</span>
                </button>
@@ -851,7 +855,7 @@ body {
                </button>
                
                <div id="context-owner-actions" class="hidden space-y-0.5 pt-1 border-t border-slate-800/80">
-                  <button onclick="contextActionEdit()" class="w-full px-3 py-2.5 text-left hover:bg-slate-800/80 rounded-xl flex items-center gap-3 transition">
+                  <button  onclick="contextActionEdit()" class="w-full px-3 py-2.5 text-left hover:bg-slate-800/80 rounded-xl flex items-center gap-3 transition edit-label">
                      <i class="fa-solid fa-pen-to-square text-emerald-400 w-4 text-center"></i>
                      <span>Edit Text</span>
                   </button>
@@ -1319,6 +1323,7 @@ let callSelectMode = false;
 let ffmpegLoadPromise = null;
 let dpCropImage=null,dpCropDragging=false;
 let dpCropX=0,dpCropY=0,dpCropStartX=0,dpCropStartY=0;
+let editorMode = null;
 
 const RTC_CONFIG = {
    iceServers: [
@@ -1869,6 +1874,8 @@ if (socket)
    {
       pinnedMsgId = pinned ? (pinned.message_id || pinned.id) : null;
       updatePinnedBanner(pinned);
+      console.log(pinned)
+      renderOnlineUsers()
    });
    
    socket.on('count', (count) =>
@@ -2525,46 +2532,121 @@ function handleTypingInput()
    }, 2000);
 }
 
-function handleSend(e)
-{
-   e.preventDefault();
-   const input = document.getElementById('msg-input');
-   const text = input.value.trim();
-   
-   if ((!text && !selectedFileBase64) || !activeTargetUserId) return;
-   
-   const payload = {
-      targetUserId: activeTargetUserId,
-      text,
-      file: selectedFileBase64,
-      fileName: selectedFileName,
-      fileType: selectedFileType,
-      fileSize: selectedFileSize,
-      replyTo: activeReplyMsg ? {
-         id: activeReplyMsg.id,
-         name: activeReplyMsg.name,
-         text: activeReplyMsg.text,
-         file: activeReplyMsg.file,
-         fileName: activeReplyMsg.fileName,
-         fileType: activeReplyMsg.fileType,
-         fileSize: activeReplyMsg.fileSize,
-         
-      } : null
-   };
-   
-   socket.emit('directMessage', payload);
-   
-   input.value = '';
-   socket.emit('stopTyping',
-   {
-      targetUserId: activeTargetUserId
-   });
-   clearSelectedFile();
-   selectedFileBase64 = null;
-   selectedFileName = null;
-   selectedFileType = null;
-   selectedFileSize = null;
-   cancelReply();
+async function handleSend(e){
+    e.preventDefault();
+
+    const input=document.getElementById('msg-input');
+    const text=input.value.trim();
+
+    if((!text&&!selectedFileBase64)||!activeTargetUserId)return;
+
+
+    const targetUserId=activeTargetUserId;
+    const replyTo=activeReplyMsg?{id:activeReplyMsg.id, owner_id:activeReplyMsg.user_id, name:activeReplyMsg.name,text:activeReplyMsg.text,file:activeReplyMsg.file,fileName:activeReplyMsg.fileName,fileType:activeReplyMsg.fileType,fileSize:activeReplyMsg.fileSize}:null;
+    const payload={targetUserId,text,replyTo};
+
+    input.value='';
+    socket.emit('stopTyping',{targetUserId});
+
+    if(!selectedFileBase64){
+        socket.emit('directMessage',payload);
+        clearSelectedFile();
+        cancelReply();
+        return;
+    }
+
+    const file=await base64ToFile(selectedFileBase64,selectedFileName,selectedFileType);
+    const tempId=addUploadingMessage(file,text);
+
+    clearSelectedFile();
+    cancelReply();
+
+    try{
+        const uploaded=await uploadMessageFile(file,p=>updateUploadingMessage(tempId,p));
+
+        document.querySelector(`[data-msg-id="${tempId}"]`)?.remove();
+
+        Object.assign(payload,{
+            file:uploaded.url,
+            fileName:uploaded.fileName,
+            fileType:uploaded.fileType,
+            fileSize:uploaded.fileSize
+        });
+
+        socket.emit('directMessage',payload);
+
+    }catch(err){
+        document.querySelector(`[data-msg-id="${tempId}"]`)?.remove();
+        showToast('Upload failed','error');
+    }
+}
+
+function uploadMessageFile(file, onProgress) {
+    return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+
+        xhr.open('POST', '/uploadMessageFile');
+
+        xhr.upload.onprogress = e => {
+            if (!e.lengthComputable) return;
+
+            onProgress(
+                Math.round((e.loaded / e.total) * 100)
+            );
+        };
+
+        xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                try {
+                    resolve(JSON.parse(xhr.responseText));
+                } catch {
+                    reject(new Error('Invalid server response'));
+                }
+            } else {
+                reject(new Error('Upload failed'));
+            }
+        };
+
+        xhr.onerror = () => {
+            reject(new Error('Upload failed'));
+        };
+
+        const form = new FormData();
+        form.append('file', file);
+
+        xhr.send(form);
+    });
+}
+
+function addUploadingMessage(file,text){
+    const tempId=`upload_${Date.now()}`;
+    const user=allUsers.find(u=>u.id===myUserId);
+    const msg={id:tempId,user_id:myUserId,name:user?.name||'You',text,file:null,file_name:file.name,file_type:file.type,file_size:file.size,time:Date.now(),uploading:true,uploadProgress:0};
+    messagesHistory.push(msg);
+    addMessageUI(msg,true);
+    return tempId;
+}
+
+function updateUploadingMessage(id, progress) {
+    const msg = messagesHistory.find(m => m.id === id);
+    if (!msg) return;
+
+    msg.uploadProgress = progress;
+
+    const el = document.querySelector(
+        `[data-msg-id="${id}"]`
+    );
+
+    if (!el) return;
+
+    const progressBar = el.querySelector('.upload-progress-bar');
+    const progressText = el.querySelector('.upload-progress-text');
+
+    if (progressBar)
+        progressBar.style.width = `${progress}%`;
+
+    if (progressText)
+        progressText.textContent = `${progress}%`;
 }
 
 function renderAllMessages(scrollBottom = true)
@@ -2589,6 +2671,8 @@ function renderAllMessages(scrollBottom = true)
       document.getElementById("empty-state-notice")
          .classList.add("hidden");
       messagesHistory.forEach(msg => {
+    console.log(msg)
+
          if (msg.type === "call") {
             addCallMessageUI(msg);
             return;
@@ -2723,7 +2807,7 @@ function addMessageUI(msg, scroll = false)
    const avatarContainer = document.createElement('div');
    avatarContainer.className = 'w-8 h-8 rounded-xl bg-teal-950/40 border border-teal-500/30 flex items-center justify-center shrink-0 shadow-sm self-center mr-4';
    
-   if (targetUser.dp)
+   if (targetUser && targetUser.dp)
    {
       avatarContainer.innerHTML = `<img src="${targetUser.dp ? targetUser.dp : msg.name.charAt(0)
                     .toUpperCase()}" class="w-full h-full rounded-xl object-cover">`;
@@ -2795,14 +2879,14 @@ function addMessageUI(msg, scroll = false)
    {
       const parentName = typeof msg.reply_to === 'object' ? msg.reply_to.name : 'Message';
       const parentText = typeof msg.reply_to === 'object' ? (msg.reply_to.text || '[Attachment]') : 'Message';
-      replyHTML = `<div class="reply-banner-ref cursor-pointer mb-1 text-[11px] opacity-80 border-l-2 border-brand-400 pl-2 py-0.5 bg-black/25 rounded-r">
+      replyHTML = `<div class="reply-banner-ref cursor-pointer mb-1 text-[11px] opacity-80 border-l-2 border-brand-400 pl-1 py-1  bg-black/25 rounded-r">
                     <div class="flex items-center justify-start gap-1">
                         <div class="reply-banner-icon w-6 h-6 rounded-full bg-brand-500/20 border border-brand-500/30 flex items-center justify-center text-brand-400 text-xs shadow-lg shadow-brand-500/10">
-                            <i class="fas fa-user-circle text-lg"></i>
+                            <i class="fas fa-user-circle text-sm"></i>
                         </div>
-                        <div class="flex flex-col ml-2 justify-start " style="max-width: 80%; padding-right: 10px;">
-                            <span class="font-bold text-brand-300 truncate">${escapeHTML(parentName)}</span>
-                            <span class="text-slate-300 truncate text-[10px]">${String(escapeHTML(parentText)).length > 50 ? String(escapeHTML(parentText)).slice(0, 50) + '...' : String(escapeHTML(parentText))}</span>
+                        <div class="flex flex-col justify-start" style="max-width: 90%; padding-right: 5px; line-height:1.5">
+                            <span class="font-bold text-brand-300 truncate text-[8px]">${msg.reply_to.owner_id == myUserId ? 'You' : escapeHTML(parentName)}</span>
+                            <span class="text-slate-300 truncate text-[8px ]">${String(escapeHTML(parentText)).length > 50 ? String(escapeHTML(parentText)).slice(0, 50) + '...' : String(escapeHTML(parentText))}</span>
                         </div>
                     </div>
                 </div>`;
@@ -2814,6 +2898,8 @@ function addMessageUI(msg, scroll = false)
       `${(msg.file_size / 1024).toFixed(1)} KB`;
    
    let attachmentHTML = '';
+
+   
    
    if (msg.file) {
       if (msg.file_type?.startsWith('image/')) {
@@ -2918,8 +3004,23 @@ function addMessageUI(msg, scroll = false)
       }) : '';
    
    wrap.innerHTML = ` ${msg.deleted ?  '': `
+        ${msg.uploading ? `
+            <div class="mt-2 w-full">
+                <div class="flex items-center justify-between text-[10px] text-slate-300 mb-1">
+                    <span>Uploading...</span>
+                    <span class="upload-progress-text">${msg.uploadProgress || 0}%</span>
+                </div>
+
+                <div class="h-1.5 bg-black/30 rounded-full overflow-hidden">
+                    <div
+                        class="upload-progress-bar h-full bg-white/80 transition-all duration-150"
+                        style="width:${msg.uploadProgress || 0}%">
+                    </div>
+                </div>
+            </div>
+        ` : ''}
                 <div onclick="handleContextMenu(event, ${msg.id})" class="opacity-0 group-hover:opacity-100  transition-opacity cursor-pointer duration-150 z-20 flex items-center gap-0.5  justufy-end absolute p-1 ${isMe ? 'left-0' : 'right-0'} top-4" style="width:35%; align-items: flex-end; ${isMe ? ' justify-content: start;   background: linear-gradient(to left, transparent, transparent, #005007);  border-top-left-radius:5px' : ' justify-content: end; background:linear-gradient(to right, transparent, #00000000, #124212); border-top-right-radius:5px'}">
-                    <svg width="15px" height="15px" viewBox="-7.4 -7.4 34.80 34.80" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" fill="#000000"><g id="SVGRepo_bgCarrier" stroke-width="0" transform="translate(0,0), scale(1)"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round" stroke="#0e0c0c" stroke-width="4"> <title>arrow_down [#ffffff]</title> <desc>Created with Sketch.</desc> <defs> </defs> <g id="Page-1" stroke-width="2" fill="none" fill-rule="evenodd"> <g id="Dribbble-Light-Preview" transform="translate(-220.000000, -6684.000000)" fill="#ffffff"> <g id="icons" transform="translate(56.000000, 160.000000)"> <path d="M164.292308,6524.36583 L164.292308,6524.36583 C163.902564,6524.77071 163.902564,6525.42619 164.292308,6525.83004 L172.555873,6534.39267 C173.33636,6535.20244 174.602528,6535.20244 175.383014,6534.39267 L183.70754,6525.76791 C184.093286,6525.36716 184.098283,6524.71997 183.717533,6524.31405 C183.328789,6523.89985 182.68821,6523.89467 182.29347,6524.30266 L174.676479,6532.19636 C174.285736,6532.60124 173.653152,6532.60124 173.262409,6532.19636 L165.705379,6524.36583 C165.315635,6523.96094 164.683051,6523.96094 164.292308,6524.36583" id="arrow_down-[#ffffff]"> </path> </g> </g> </g> </g><g id="SVGRepo_iconCarrier"> <title>arrow_down [#ffffff]</title> <desc>Created with Sketch.</desc> <defs> </defs> <g id="Page-1" stroke-width="2" fill="none" fill-rule="evenodd"> <g id="Dribbble-Light-Preview" transform="translate(-220.000000, -6684.000000)" fill="#ffffff"> <g id="icons" transform="translate(56.000000, 160.000000)"> <path d="M164.292308,6524.36583 L164.292308,6524.36583 C163.902564,6524.77071 163.902564,6525.42619 164.292308,6525.83004 L172.555873,6534.39267 C173.33636,6535.20244 174.602528,6535.20244 175.383014,6534.39267 L183.70754,6525.76791 C184.093286,6525.36716 184.098283,6524.71997 183.717533,6524.31405 C183.328789,6523.89985 182.68821,6523.89467 182.29347,6524.30266 L174.676479,6532.19636 C174.285736,6532.60124 173.653152,6532.60124 173.262409,6532.19636 L165.705379,6524.36583 C165.315635,6523.96094 164.683051,6523.96094 164.292308,6524.36583" id="arrow_down-[#ffffff]"> </path> </g> </g> </g> </g></svg>
+                    <svg fill="#0f0" width="15px"  xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M5.41 7.59L4 9l8 8 8-8-1.41-1.41L12 14.17"></path></svg>
                 </div> `
             }
                 <div class="flex items-center gap-1.5 mb-0.5 text-[10px] text-slate-400 select-none">
@@ -3050,17 +3151,25 @@ function handleContextMenu(e, msgId)
    contextMenuTargetMsgId = msgId;
    const msg = messagesHistory.find(m => m.id === msgId);
    if (!msg) return;
+
+   console.log(msg)
    
    const isMe = msg.user_id === myUserId;
    const menu = document.getElementById('custom-context-menu');
+   menu.querySelector('.edit-label').classList.remove('hidden')
    const ownerActions = document.getElementById('context-owner-actions');
    
    const pinLabel = document.getElementById('context-pin-label');
    pinLabel.innerText = (pinnedMsgId === msgId) ? "Unpin Message" : "Pin Message";
    
    if (isMe) ownerActions.classList.remove('hidden');
-   else ownerActions.classList.add('hidden');
    
+   else ownerActions.classList.add('hidden');
+
+   msg.file ? menu.querySelector('.edit-label').classList.add('hidden') : menu.querySelector('.edit-label').classList.remove('hidden');
+
+   msg.file ? menu.querySelector('.copy-label').classList.add('hidden') : menu.querySelector('.copy-label').classList.remove('hidden');
+
    menu.classList.remove('hidden');
 }
 
@@ -3098,50 +3207,34 @@ function cancelReply()
       .classList.add('hidden');
 }
 
-function openForwardModal(msg_id)
-{
-   closeContextMenu();
-   const msg = messagesHistory.find(m => m.id === contextMenuTargetMsgId || m.id === msg_id);
-   if (!msg) return;
-   
-   const list = document.getElementById('forward-peers-list');
-   list.innerHTML = '';
-   const targets = allUsers.filter(u => u.id !== myUserId);
-   
-   if (targets.length === 0)
-   {
-      list.innerHTML = `<p class="text-xs text-slate-500 italic text-center p-3">No active peers to forward to.</p>`;
-   }
-   else
-   {
-      targets.forEach(u =>
-      {
-         const btn = document.createElement('button');
-         btn.className =
-            "w-full p-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-left text-xs font-semibold text-slate-200 flex items-center justify-between transition";
-         btn.innerHTML = `<span>${escapeHTML(u.name)}</span> <i class="fa-solid fa-paper-plane text-brand-400 text-xs"></i>`;
-         btn.onclick = () =>
-         {
-            socket.emit('forwardMessage',
-            {
-               targetUserId: u.id,
-               message:
-               {
-                  text: msg.text,
-                  image: msg.image
-               }
-            });
-            showToast(`Forwarded to ${u.name}`);
-            closeForwardModal();
-         };
-         list.appendChild(btn);
-      });
-   }
-   
-   document.getElementById('forward-modal')
-      .classList.remove('hidden');
-}
+function openForwardModal(msg_id){
+    closeContextMenu();
+    const msg=messagesHistory.find(m=>m.id===contextMenuTargetMsgId||m.id===msg_id);
+    if(!msg)return;
 
+    const list=document.getElementById('forward-peers-list');
+    list.innerHTML='';
+
+    const targets=allUsers.filter(u=>u.id!==myUserId);
+
+    if(!targets.length){
+        list.innerHTML=`<p class="text-xs text-slate-500 italic text-center p-3">No active peers to forward to.</p>`;
+    }else{
+        targets.forEach(u=>{
+            const btn=document.createElement('button');
+            btn.className='w-full p-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-left text-xs font-semibold text-slate-200 flex items-center justify-between transition';
+            btn.innerHTML=`<span>${escapeHTML(u.name)}</span><i class="fa-solid fa-paper-plane text-brand-400 text-xs"></i>`;
+            btn.onclick=()=>{
+                socket.emit('forwardMessage',{targetUserId:u.id,message:{...msg}});
+                showToast(`Forwarded to ${u.name}`);
+                closeForwardModal();
+            };
+            list.appendChild(btn);
+        });
+    }
+
+    document.getElementById('forward-modal').classList.remove('hidden');
+}
 function closeForwardModal()
 {
    document.getElementById('forward-modal')
@@ -3779,8 +3872,9 @@ function pauseStatus()
  
 function resumeStatus()
  {
+
     if (!statusPaused) return;
-    
+    closeStatusReplyModal()
     if (statusRemaining <= 0)
     {
        nextStatus();
@@ -3913,6 +4007,12 @@ function createStatus()
       .classList.remove("hidden");
 }
 
+function closeCreateStatus()
+{
+   document.getElementById("create-status-modal")
+      .classList.add("hidden");
+}
+
 function setupStatusHold() {
    const viewer = document.getElementById("status-content");
    if (!viewer) return;
@@ -3987,8 +4087,8 @@ function pickStatusMedia(type, capture)
       const file = input.files[0];
       if (!file) return;
       
-      if (file.size > 5 * 1024 * 1024)
-         return showToast("Maximum Status Upload size: 5 MB");
+      if (file.size > 50 * 1024 * 1024)
+         return showToast("Maximum Status Upload size: 50 MB");
       
       openStatusEditor(file, type);
    };
@@ -4837,6 +4937,7 @@ function renderOnlineUsers() {
          `📎 ${last?.filename || 'Attachment'}` :
          lastMsgText.length > 50 ? String(lastMsgText)
          .slice(0, 50) + '...' : lastMsgText;
+
       
       item.innerHTML = `
                     <div class="flex items-center overflow-hidden" style="width:stretch">
@@ -4857,14 +4958,14 @@ function renderOnlineUsers() {
                                 </span>
 
                 
-                                <span class="mt-1 text-[10px] flex gap-2 text-slate-400 block truncate">
+                                <span class="mt-1 text-[10px] flex items-center gap-2 text-slate-400 block truncate">
                                   ${last?.by===myUserId
-                                    ? `<div class="message-stats text-xs ${isRead?'text-green-400':''}">
+                                     && !String(last.id).startsWith('pin_') && !last.deleted ? `<div class="message-stats text-xs ${isRead?'text-green-400':''}">
                                         ${isRead
                                             ? '<svg width="15px" viewBox="0 0 32 32"><path stroke="#4d9aff" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 17l5 5 12-12M16 20l2 2 12-12"/></svg>'
                                             : '<svg width="15px" viewBox="0 0 32 32"><path stroke="#dedede" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6.5 17l6 6 13-13"/></svg>'}
                                     </div>`
-                                    : ''}  ${preview}
+                                    : ''}  ${last && last.deleted ? '<i class="fas fa-ban"></i> <i> Message Deleted</i>' : last  && String(last.id).startsWith('pin_')? `<i class="fas fa-thumbtack rotate-[45deg]"></i> <i>${preview}</i>` : preview}
                                 </span>
                             </div>
                 
@@ -4964,7 +5065,7 @@ function openStatusEditor(file, type) {
                         <i class="fa-solid fa-xmark"></i>
                     </button>
         
-                    <span class="text-white font-semibold">Edit Status</span>
+                    <span class="text-white font-semibold">Edit Media</span>
         
                     <button id="status-done-btn"
                         onclick="saveStatusEdit()"
@@ -5714,55 +5815,58 @@ function resetStatusEditor() {
    editorOverlay = null;
 }
 
-function saveStatusEdit() {
-   const btn = document.getElementById("status-done-btn");
-   
-   if (editorType === "image") {
-      if (cropBox) applyCrop();
-      if (blurCanvas) applyBlur();
-      
-      removeEditorOverlay();
-      
-      if (btn) {
-         btn.disabled = true;
-         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Posting...';
-      }
-      
-      editorCanvas.toBlob(blob => {
-         if (!blob) return;
-         
-         const file = new File(
-                        [blob],
-            "status.jpg",
-            {
-               type: "image/jpeg"
+async function saveStatusEdit(){
+    const btn=document.getElementById("status-done-btn");
+
+    if(editorType==="image"){
+        if(cropBox)applyCrop();
+        if(blurCanvas)applyBlur();
+
+        removeEditorOverlay();
+
+        if(!editorCanvas)return;
+
+        if(btn){
+            btn.disabled=true;
+            btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Saving...';
+        }
+
+        editorCanvas.toBlob(async blob=>{
+            if(!blob)return;
+
+            const file=new File(
+                [blob],
+                editorFile?.name||"image.jpg",
+                {type:"image/jpeg"}
+            );
+
+            if(editorMode==="attachment"){
+                await setEditedAttachment(file);
+                closeStatusEditor();
+                editorMode=null;
+                return;
             }
-         );
-         
-         closeStatusEditor();
-         uploadEditedStatus(file, "image");
-      }, "image/jpeg", .92);
-      
-      return;
-   }
-   
-   if (isTrimmingVideo) return;
-   
-   if (videoTrimEnd <= videoTrimStart) {
-      showToast("Select a valid video section.", "error");
-      return;
-   }
-   
-   if (btn) {
-      btn.disabled = true;
-      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-   }
-   
-   trimVideo(
-      videoTrimStart,
-      videoTrimEnd,
-      true
-   );
+
+            closeStatusEditor();
+            uploadEditedStatus(file,"image");
+        },"image/jpeg",.92);
+
+        return;
+    }
+
+    if(isTrimmingVideo)return;
+
+    if(videoTrimEnd<=videoTrimStart){
+        showToast("Select a valid video section.","error");
+        return;
+    }
+
+    if(btn){
+        btn.disabled=true;
+        btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Processing...';
+    }
+
+    trimVideo(videoTrimStart,videoTrimEnd,true);
 }
 
 function ensureFFmpeg() {
@@ -5804,21 +5908,27 @@ async function trimVideo(start, end) {
       const output = await ffmpeg.readFile("output.mp4");
       
       const fileOut = new File(
-                    [output.buffer],
-         "status.mp4",
-         {
-            type: "video/mp4"
-         }
-      );
-      
-      await ffmpeg.deleteFile("input.mp4");
-      await ffmpeg.deleteFile("output.mp4");
-      
-      isTrimmingVideo = false;
-      
-      closeStatusEditor();
-      uploadEditedStatus(fileOut, "video");
-      
+            [output.buffer],
+            file.name,
+            {
+                type: "video/mp4"
+            }
+        );
+
+        await ffmpeg.deleteFile("input.mp4");
+        await ffmpeg.deleteFile("output.mp4");
+
+        isTrimmingVideo = false;
+
+        if (editorMode === "attachment") {
+            setEditedAttachment(fileOut);
+            closeStatusEditor();
+            return;
+        }
+
+        closeStatusEditor();
+        uploadEditedStatus(fileOut, "video");
+            
    } catch (e) {
       isTrimmingVideo = false;
       showToast("Failed to process video.", "error");
@@ -6095,63 +6205,68 @@ function closeDpCrop(){
 }
 
 function handleFileSelect(e) {
-   const file = e.target.files[0];
-   if (!file) return;
-   
-   if (file.size > 10 * 1024 * 1024) {
-      showToast("Maximum file size is  10  MB.", "error");
-      e.target.value = "";
-      return;
-   }
-   
-   const reader = new FileReader();
-   
-   reader.onload = (evt) => {
-      selectedFileBase64 = evt.target.result;
-      selectedFileName = file.name;
-      selectedFileType = file.type;
-      selectedFileSize = file.size;
-      
-      const thumb = document.getElementById("file-preview-thumbnail");
-      const icon = document.getElementById("file-preview-fa");
-      
-      document.getElementById("file-preview-name")
-         .innerText = file.name;
-      document.getElementById("file-preview-size")
-         .innerText =
-         `${(file.size / 1024).toFixed(1)} KB`;
-      
-      if (file.type.startsWith("image/")) {
-         thumb.src = selectedFileBase64;
-         thumb.classList.remove("hidden");
-         icon.classList.add("hidden");
-      } else {
-         thumb.classList.add("hidden");
-         icon.classList.remove("hidden");
-         
-         if (file.type.includes("pdf"))
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.size > 50 * 1024 * 1024) {
+        showToast("Maximum file size is 50 MB.", "error");
+        e.target.value = "";
+        return;
+    }
+
+    if (file.type.startsWith("image/") || file.type.startsWith("video/")) {
+        editorMode = "attachment";
+        openStatusEditor(file, file.type.startsWith("image/") ? "image" : "video");
+        return;
+    }
+
+    selectedFileBase64=null;
+    selectedFileName=file.name;
+    selectedFileType=file.type||({
+        jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',gif:'image/gif',
+        webp:'image/webp',mp4:'video/mp4',webm:'video/webm',mov:'video/quicktime',
+        mp3:'audio/mpeg',wav:'audio/wav',pdf:'application/pdf',zip:'application/zip'
+    }[file.name.split('.').pop().toLowerCase()]||'application/octet-stream');
+    selectedFileSize=file.size;
+
+    const reader = new FileReader();
+
+    reader.onload = evt => {
+        selectedFileBase64 = evt.target.result;
+
+        const thumb = document.getElementById("file-preview-thumbnail");
+        const icon = document.getElementById("file-preview-fa");
+
+        document.getElementById("file-preview-name").innerText = file.name;
+
+        document.getElementById("file-preview-size").innerText =
+            `${(file.size / 1024).toFixed(1)} KB`;
+
+        thumb.classList.add("hidden");
+        icon.classList.remove("hidden");
+
+        if (file.type.includes("pdf"))
             icon.className = "fa-solid fa-file-pdf text-red-400";
-         else if (file.type.includes("word"))
+        else if (file.type.includes("word"))
             icon.className = "fa-solid fa-file-word text-blue-400";
-         else if (file.type.includes("excel") || file.type.includes("sheet"))
+        else if (file.type.includes("excel") || file.type.includes("sheet"))
             icon.className = "fa-solid fa-file-excel text-green-400";
-         else if (file.type.includes("zip") || file.type.includes("rar"))
+        else if (file.type.includes("zip") || file.type.includes("rar"))
             icon.className = "fa-solid fa-file-zipper text-yellow-400";
-         else if (file.type.startsWith("video/"))
+        else if (file.type.startsWith("video/"))
             icon.className = "fa-solid fa-file-video text-purple-400";
-         else if (file.type.startsWith("audio/"))
+        else if (file.type.startsWith("audio/"))
             icon.className = "fa-solid fa-file-audio text-cyan-400";
-         else if (file.type.includes("octet-stream"))
+        else if (file.type.includes("octet-stream"))
             icon.className = "fa-solid fa-server text-cyan-400";
-         else
+        else
             icon.className = "fa-solid fa-file text-slate-300";
-      }
-      
-      document.getElementById("file-preview-container")
-         .classList.remove("hidden");
-   };
-   
-   reader.readAsDataURL(file);
+
+        document.getElementById("file-preview-container")
+            .classList.remove("hidden");
+    };
+
+    reader.readAsDataURL(file);
 }
 
 function clearSelectedFile() {
@@ -6167,6 +6282,46 @@ function clearSelectedFile() {
       .src = "";
    document.getElementById("file-input")
       .value = "";
+}
+
+function setEditedAttachment(file) {
+    selectedFileName = file.name;
+    selectedFileType = file.type;
+    selectedFileSize = file.size;
+
+    const reader = new FileReader();
+
+    reader.onload = e => {
+        selectedFileBase64 = e.target.result;
+
+        const thumb = document.getElementById("file-preview-thumbnail");
+        const icon = document.getElementById("file-preview-fa");
+
+        if (file.type.startsWith("image/")) {
+            thumb.src = selectedFileBase64;
+            thumb.classList.remove("hidden");
+            icon.classList.add("hidden");
+        } else if (file.type.startsWith("video/")) {
+            thumb.classList.add("hidden");
+            icon.className =
+                "fa-solid fa-file-video text-purple-400";
+            icon.classList.remove("hidden");
+        }
+
+        document.getElementById("file-preview-name")
+            .innerText = file.name;
+
+        document.getElementById("file-preview-size")
+            .innerText =
+            `${(file.size / 1024).toFixed(1)} KB`;
+
+        document.getElementById("file-preview-container")
+            .classList.remove("hidden");
+
+        document.getElementById("file-input").value = "";
+    };
+
+    reader.readAsDataURL(file);
 }
 
 function toggleEmojiPicker()

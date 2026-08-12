@@ -17,7 +17,11 @@ const cache = {
    statuses: new Map(),
    histories: new Map(),
    calls: null,
-   contacts: new Map()
+   contacts: new Map(),
+   groups:new Map(),
+   groupMembers:new Map(),
+   groupHistories:new Map(),
+   groupLastMessages:new Map()
    
 };
 
@@ -239,7 +243,8 @@ async function createTables(){
             CREATE TABLE IF NOT EXISTS pinned_messages(
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 chat_key TEXT UNIQUE NOT NULL,
-                message_id INTEGER NOT NULL
+                message_id INTEGER NOT NULL,
+				pinned_at INTEGER NOT NULL
             )
         `);
         console.log('[DB] pinned_messages OK');
@@ -248,6 +253,50 @@ async function createTables(){
             INSERT OR IGNORE INTO users(id,name)
             VALUES(?,?)
         `,['admin','Admin']);
+
+      //   Groups
+
+      await dbRun(`
+            CREATE TABLE IF NOT EXISTS groups (
+               id INTEGER PRIMARY KEY AUTOINCREMENT,
+               name TEXT NOT NULL,
+               description TEXT,
+               image TEXT,
+               type TEXT NOT NULL DEFAULT 'private',
+               owner_id TEXT NOT NULL,
+               created_at INTEGER NOT NULL
+            )
+      `);
+      
+      await dbRun(`
+            CREATE TABLE IF NOT EXISTS group_members (
+               id INTEGER PRIMARY KEY AUTOINCREMENT,
+               group_id INTEGER NOT NULL,
+               user_id TEXT NOT NULL,
+               role TEXT NOT NULL DEFAULT 'member',
+               joined_at INTEGER NOT NULL,
+               UNIQUE(group_id,user_id)
+            )
+      `);
+      
+      await dbRun(`
+            CREATE TABLE IF NOT EXISTS group_messages (
+               id INTEGER PRIMARY KEY AUTOINCREMENT,
+               group_id INTEGER NOT NULL,
+               user_id TEXT NOT NULL,
+               name TEXT,
+               text TEXT,
+               file TEXT,
+               file_name TEXT,
+               file_type TEXT,
+               file_size INTEGER,
+               reply_to TEXT,
+               time INTEGER NOT NULL,
+               reactions TEXT DEFAULT '{}',
+               edited INTEGER DEFAULT 0,
+               deleted INTEGER DEFAULT 0
+            )
+      `);
 
         console.log('[DB] ALL TABLES CREATED');
     }catch(e){
@@ -350,26 +399,28 @@ function formatUser(row) {
    };
 }
 
-async function loadHistoryCache(chatKey) {
-   if (cache.histories.has(chatKey)) {
-      return cache.histories.get(chatKey);
-   }
-   
-   const rows = await dbAll(
-      'SELECT * FROM messages WHERE chat_key = ? ORDER BY time DESC',
-      [chatKey]
-   );
-   
-   const history = rows.map(r => {
-         const msg = formatMessage(r);
-         setCachedMessage(msg);
-         return msg;
-      })
-      .reverse();
-   
-   cache.histories.set(chatKey, history);
-   
-   return history;
+function parseJSON(value, fallback=[]){
+    if(Array.isArray(value)||typeof value==='object'&&value!==null)return value;
+    try{return JSON.parse(value||JSON.stringify(fallback));}
+    catch{return fallback;}
+}
+
+
+async function loadHistoryCache(chatKey,userId){
+    const rows=await dbAll(
+        'SELECT * FROM messages WHERE chat_key=? ORDER BY time ASC',
+        [chatKey]
+    );
+
+    const history=[];
+
+    for(const row of rows){
+        const msg=await formatMessage(row,userId);
+        if(msg)history.push(msg);
+    }
+
+    cache.histories.set(chatKey,history);
+    return history;
 }
 
 function setCachedContacts(userId, contacts) {
@@ -404,42 +455,59 @@ async function loadLastMessagesCache() {
    }
 }
 
-function formatMessage(row) {
-   if (!row) return null;
-   let replyTo = null;
-   let readBy = [];
-   let reactions = {};
-   
-   try {
-      replyTo = row.reply_to ? JSON.parse(row.reply_to) : null;
-   } catch (e) {}
-   try {
-      readBy = row.read_by ? JSON.parse(row.read_by) : [];
-   } catch (e) {}
-   try {
-      reactions = row.reactions ? JSON.parse(row.reactions) : {};
-   } catch (e) {}
-   
-   return {
-      id: row.id,
-      chat_key: row.chat_key,
-      user_id: row.user_id,
-      target_user_id: row.target_user_id,
-      name: row.name,
-      text: row.deleted ? null : row.text,
-      image: row.deleted ? null : row.image,
-      file: row.deleted ? null : row.file,
-      file_name: row.deleted ? null : row.file_name,
-      file_type: row.deleted ? null : row.file_type,
-      file_size: row.deleted ? null : row.file_size,
-      reply_to: replyTo,
-      time: row.time,
-      read_by: readBy,
-      reactions: row.deleted ? null : reactions,
-      edited: row.deleted ? null : Boolean(row.edited),
-      forwarded: Boolean(row.forwarded),
-      deleted: row.deleted === 1
-   };
+async function formatMessage(row,userId){
+    if(!row)return null;
+
+    const contact=await dbGet(
+        `SELECT name FROM contacts WHERE user_id=? AND contact_user_id=?`,
+        [userId,row.user_id]
+    );
+
+    let replyTo=null,readBy=[],reactions={};
+
+    try{
+        replyTo=row.reply_to?JSON.parse(row.reply_to):null;
+
+        if(replyTo?.id){
+            const replyMsg=await getCachedMessage(replyTo.id);
+
+            if(replyMsg){
+                const replyContact=await dbGet(
+                    `SELECT name FROM contacts WHERE user_id=? AND contact_user_id=?`,
+                    [userId,replyMsg.user_id]
+                );
+
+                replyTo={
+                    ...replyTo,
+                    name:replyContact?.name||replyMsg.name||'Unknown'
+                };
+            }
+        }
+    }catch{}
+
+    try{readBy=row.read_by?JSON.parse(row.read_by):[]}catch{}
+    try{reactions=row.reactions?JSON.parse(row.reactions):{}}catch{}
+
+    return{
+        id:row.id,
+        chat_key:row.chat_key,
+        user_id:row.user_id,
+        target_user_id:row.target_user_id,
+        name:contact?.name||row.name||'Unknown',
+        text:row.deleted?null:row.text,
+        image:row.deleted?null:row.image,
+        file:row.deleted?null:row.file,
+        file_name:row.deleted?null:row.file_name,
+        file_type:row.deleted?null:row.file_type,
+        file_size:row.deleted?null:row.file_size,
+        reply_to:replyTo,
+        time:row.time,
+        read_by:readBy,
+        reactions:row.deleted?null:reactions,
+        edited:row.deleted?null:Boolean(row.edited),
+        forwarded:Boolean(row.forwarded),
+        deleted:row.deleted===1
+    };
 }
 
 function formatCall(row) {
@@ -520,20 +588,33 @@ function invalidateMessageCache(msgId) {
    cache.messages.delete(msgId);
 }
 
-async function getCachedPinned(chatKey) {
-   if (cache.pinned.has(chatKey)) {
-      return cache.pinned.get(chatKey);
-   }
-   const row = await dbGet('SELECT * FROM pinned_messages WHERE chat_key = ?', [chatKey]);
-   const pinned = row ? {
-      id: row.id,
-      chat_key: row.chat_key,
-      message_id: row.message_id
-   } : null;
-   cache.pinned.set(chatKey, pinned);
-   return pinned;
-}
+async function getCachedPinned(chatKey){
 
+    if(cache.pinned.has(chatKey)){
+        const cached=cache.pinned.get(chatKey);
+        return cached;
+    }
+
+
+    const row=await dbGet(
+        'SELECT * FROM pinned_messages WHERE chat_key=?',
+        [chatKey]
+    );
+
+
+    const pinned=row?{
+		id:row.id,
+		chat_key:row.chat_key,
+		message_id:row.message_id,
+		pinned_at:row.pinned_at,
+		pinned_by:row.pinned_by
+	}:null;
+
+    cache.pinned.set(chatKey,pinned);
+
+
+    return pinned;
+}
 function setCachedPinned(chatKey, pinnedObj) {
    cache.pinned.set(chatKey, pinnedObj);
 }
@@ -677,6 +758,7 @@ function getFileIcon(type = '') {
    if (type.includes('word')) return 'fas fa-file-word';
    if (type.includes('text/html')) return 'fab fa-brands fa-html5';
    if (type.includes('text/css')) return 'fas fa-css3';
+   if (type.includes('text/css')) return 'fas fa-css3';
    if (type.includes('excel') || type.includes('spreadsheet')) return 'fas fa-file-excel';
    if (type.includes('powerpoint') || type.includes('presentation')) return 'fas fa-file-powerpoint';
    if (type.includes('zip') || type.includes('rar') || type.includes('7z')) return 'fas fa-file-zipper';
@@ -684,56 +766,104 @@ function getFileIcon(type = '') {
    return 'fas fa-file';
 }
 
-async function calculateLastMessages(currentUserId) {
-   const allUsers = getAllUsers();
-   const calls = await getUserCalls(currentUserId);
-   const lastMsgs = [];
-   
-   for (const user of allUsers) {
-      if (user.id === currentUserId) continue;
-      
-      const last = cache.lastMessages.get(
-         getChatKey(currentUserId, user.id)
-      );
-      
-      const call = calls.find(c =>
-         (c.caller_id === user.id || c.receiver_id === user.id)
-      );
-      
-      if (!last && !call) continue;
-      
-      const callTime = call?.ended_at || call?.started_at || 0;
-      
-      if (call && callTime > (last?.time || 0)) {
-         lastMsgs.push({
-            id: `call_${call.id}`,
-            peerId: user.id,
-            by: call.caller_id,
-            to: call.receiver_id,
-            msg: call.status === 'rejected' ?
-               '📞 Call rejected' : call.status === 'missed' ?
-               '📞 Missed call' : '📞 Call',
-            filename: null,
-            at: callTime,
-            read_by: []
-         });
-         continue;
-      }
-      
-      lastMsgs.push({
-         id: last.id,
-         peerId: user.id,
-         by: last.user_id,
-         to: last.target_user_id,
-         msg: last.deleted ?
-            '🚫 Message Deleted' : (last.text || (last.file_type ? getFileIcon(last.file_type) : '')),
-         filename: last.deleted ? null : last.file_name,
-         at: last.time,
-         read_by: JSON.parse(last.read_by || '[]')
-      });
-   }
-   
-   return lastMsgs;
+async function calculateLastMessages(currentUserId){
+    const allUsers=getAllUsers();
+    const calls=await getUserCalls(currentUserId);
+    const lastMsgs=[];
+
+    for(const user of allUsers){
+        if(user.id===currentUserId)continue;
+
+        const chatKey=getChatKey(currentUserId,user.id);
+        const last=cache.lastMessages.get(chatKey);
+        const pinned=await getCachedPinned(chatKey);
+
+        const call=calls.find(c=>
+            c.caller_id===user.id||c.receiver_id===user.id
+        );
+
+        const callTime=call?.ended_at||call?.started_at||0;
+        const pinTime=pinned?.pinned_at||0;
+
+        let latestTime=last?.time||0;
+        let latestType='message';
+
+        if(call&&callTime>latestTime){
+            latestTime=callTime;
+            latestType='call';
+        }
+
+        if(pinned&&pinTime>latestTime){
+            const pinnedMsg=await getCachedMessage(pinned.message_id);
+
+            if(pinnedMsg){
+                latestTime=pinTime;
+                latestType='pinned';
+            }
+        }
+
+        if(!latestTime)continue;
+
+        if(latestType==='call'){
+            lastMsgs.push({
+                id:`call_${call.id}`,
+                peerId:user.id,
+                by:call.caller_id,
+                to:call.receiver_id,
+                msg:call.status==='rejected'?'📞 Call rejected':
+                    call.status==='missed'?'📞 Missed call':'📞 Call',
+                filename:null,
+                at:callTime,
+                read_by:[]
+            });
+            continue;
+        }
+
+		if(latestType==='pinned'){
+			const pinnedMsg=await getCachedMessage(pinned.message_id);
+			if(!pinnedMsg)continue;
+		
+			const pinUser=await getCachedUser(pinned.pinned_by);
+			const contact=await dbGet(
+				`SELECT name FROM contacts WHERE user_id=? AND contact_user_id=?`,
+				[currentUserId,pinned.pinned_by]
+			);
+		
+			const pinName=contact?.name||pinUser?.name||'Someone';
+		
+			lastMsgs.push({
+				id:`pin_${pinned.message_id}`,
+				peerId:user.id,
+				by:pinned.pinned_by,
+				deleted:false,
+				to:user.id,
+				msg:`${pinName} pinned a message`,
+				filename:null,
+				at:pinned.pinned_at,
+				read_by:[]
+			});
+		
+			continue;
+		}
+
+        lastMsgs.push({
+            id:last.id,
+            peerId:user.id,
+            by:last.user_id,
+            to:last.target_user_id,
+            deleted:last.deleted == 1 ? true : false,
+            msg:last.deleted?'🚫 Message Deleted':
+                (last.text||(last.file_type?
+                getFileIcon(last.file_type):'')),
+            filename:last.deleted?null:last.file_name,
+            at:last.time,
+            read_by:Array.isArray(last.read_by)?
+                last.read_by:
+                JSON.parse(last.read_by||'[]')
+        });
+    }
+
+    return lastMsgs.sort((a,b)=>b.at-a.at);
 }
 
 const io = new Server(server, {
@@ -1011,6 +1141,8 @@ io.on('connection', (socket) => {
       
       if (!userId)
          return;
+
+	  await loadStatusCache(userId);
       
       const now = Date.now();
       const grouped = {};
@@ -1186,6 +1318,28 @@ io.on('connection', (socket) => {
       
       await broadcastUsers();
    });
+
+   socket.on('forwardMessage',async(data={})=>{
+    const userId=sidToUserId.get(socket.id),targetUserId=data.targetUserId,msg=data.message;
+    if(!userId||!targetUserId||!msg)return;
+
+    const user=await getCachedUser(userId),name=user?.name||'Anonymous',chatKey=getChatKey(userId,targetUserId),time=Date.now();
+
+    const r=await dbRun(`INSERT INTO messages
+    (chat_key,user_id,target_user_id,name,text,image,reply_to,time,read_by,reactions,edited,forwarded,file,file_name,file_type,file_size,deleted)
+    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    [chatKey,userId,targetUserId,name,msg.text||'',msg.image||null,msg.reply_to?JSON.stringify(msg.reply_to):null,time,'[]','{}',0,1,msg.file||null,msg.file_name||null,msg.file_type||null,msg.file_size||null,0]);
+
+    const row={id:r.lastID,chat_key:chatKey,user_id:userId,target_user_id:targetUserId,name,text:msg.text||'',image:msg.image||null,reply_to:msg.reply_to||null,time,read_by:'[]',reactions:'{}',edited:0,forwarded:1,file:msg.file||null,file_name:msg.file_name||null,file_type:msg.file_type||null,file_size:msg.file_size||null,deleted:0};
+    const dataOut=formatMessage(row);
+
+    setCachedMessage(dataOut);
+    cache.lastMessages.set(chatKey,row);
+    if(cache.histories.has(chatKey))cache.histories.get(chatKey).push(dataOut);
+
+    socket.emit('directMessage',dataOut);
+    io.to(targetUserId).emit('directMessage',dataOut);
+});
    
    socket.on('deleteDp', async (data = {}) => {
       const userId = sidToUserId.get(socket.id);
@@ -1358,93 +1512,110 @@ io.on('connection', (socket) => {
          contactUserId
       });
    });
+
+   const messageUploadDir = path.join(PUBLIC_DIR, 'uploads', 'messages');
+
+	fs.mkdirSync(messageUploadDir, {
+		recursive: true
+	});
+
+	const messageStorage = multer.diskStorage({
+		destination: (req, file, cb) => {
+			cb(null, messageUploadDir);
+		},
+
+		filename: (req, file, cb) => {
+			cb(
+				null,
+				`${Date.now()}-${Math.random().toString(36).slice(2)}${path.extname(file.originalname)}`
+			);
+		}
+	});
+
+	const messageUpload = multer({
+		storage: messageStorage,
+		limits: {
+			fileSize: 50 * 1024 * 1024
+		}
+	});
+
+	app.post('/uploadMessageFile', messageUpload.single('file'), (req, res) => {
+		if (!req.file) {
+			return res.status(400).json({
+				error: 'No file uploaded'
+			});
+		}
+
+		res.json({
+			url: `/uploads/messages/${req.file.filename}`,
+			fileName: req.file.originalname,
+			fileType: req.file.mimetype,
+			fileSize: req.file.size
+		});
+	});
    
-   socket.on('directMessage', async (payload = {}) => {
-      const userId = sidToUserId.get(socket.id);
-      if (!userId || !payload) return;
-      
-      const targetUserId = payload.targetUserId;
-      if (!targetUserId) return;
-      
-      const text = (payload.text || '')
-         .trim();
-      const file = payload.file || null;
-      const fileName = payload.fileName || null;
-      const fileType = payload.fileType || null;
-      const fileSize = payload.fileSize || null;
-      const replyTo = payload.replyTo ? JSON.stringify(payload.replyTo) : null;
-      
-      if (!text && !file) return;
-      
-      const sender = await getCachedUser(userId);
-      const senderName = sender?.name || 'Anonymous';
-      const chatKey = getChatKey(userId, targetUserId);
-      const nowMs = Date.now();
-      
-      const result = await dbRun(`INSERT INTO messages
-    (chat_key,user_id,target_user_id,name,text,file,file_name,file_type,file_size,reply_to,time,read_by,reactions,edited,forwarded,deleted)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-    [chatKey, userId, targetUserId, senderName, text, file, fileName, fileType, fileSize, replyTo, nowMs, '[]', '{}', 0, 0, 0]);
-      
-      const insertedRow = {
-         id: result.lastID,
-         chat_key: chatKey,
-         user_id: userId,
-         target_user_id: targetUserId,
-         name: senderName,
-         text,
-         file,
-         file_name: fileName,
-         file_type: fileType,
-         file_size: fileSize,
-         reply_to: replyTo,
-         time: nowMs,
-         read_by: '[]',
-         reactions: '{}',
-         edited: 0,
-         forwarded: 0,
-         deleted: 0
-      };
-      
-      const msgData = formatMessage(insertedRow);
-      
-      setCachedMessage(msgData);
-      
-      cache.lastMessages.set(chatKey, insertedRow);
-      
-      if (cache.histories.has(chatKey)) {
-         cache.histories.get(chatKey)
-            .push(msgData);
-      }
-      
-      socket.emit('directMessage', msgData);
-      io.to(targetUserId)
-         .emit('directMessage', msgData);
-      
-      socket.emit('lastMessages', {
-         lastMessages: await calculateLastMessages(userId)
-      });
-      
-      io.to(targetUserId)
-         .emit('lastMessages', {
-            lastMessages: await calculateLastMessages(targetUserId)
-         });
-      
-      const target = await getCachedUser(targetUserId);
-      
-      if (target?.fcmToken) {
-         await sendPushNotification(
-            target.fcmToken,
-            senderName,
-            text || fileName || '📎 Attachment', {
-               type: 'message',
-               userId,
-               chatId: chatKey
-            },
-            targetUserId
-         );
-      }
-   });
+	socket.on('directMessage',async(payload={})=>{
+		const userId=sidToUserId.get(socket.id);
+		const targetUserId=payload.targetUserId;
+		if(!userId||!targetUserId)return;
+	
+		const text=(payload.text||'').trim();
+		const file=payload.file||null;
+		if(!text&&!file)return;
+	
+		const fileName=payload.fileName||null;
+		const fileType=payload.fileType||null;
+		const fileSize=payload.fileSize||null;
+		const replyTo=payload.replyTo?JSON.stringify(payload.replyTo):null;
+		const sender=await getCachedUser(userId);
+		const senderName=sender?.name||'Anonymous';
+		const chatKey=getChatKey(userId,targetUserId);
+		const nowMs=Date.now();
+	
+		const result=await dbRun(
+			`INSERT INTO messages
+			(chat_key,user_id,target_user_id,name,text,file,file_name,file_type,file_size,reply_to,time,read_by,reactions,edited,forwarded,deleted)
+			VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+			[chatKey,userId,targetUserId,senderName,text,file,fileName,fileType,
+			 fileSize,replyTo,nowMs,'[]','{}',0,0,0]
+		);
+	
+		const insertedRow={
+			id:result.lastID,chat_key:chatKey,user_id:userId,
+			target_user_id:targetUserId,name:senderName,text,file,
+			file_name:fileName,file_type:fileType,file_size:fileSize,
+			reply_to:replyTo,time:nowMs,read_by:'[]',reactions:'{}',
+			edited:0,forwarded:0,deleted:0
+		};
+	
+		const msgData=await formatMessage(insertedRow,userId);
+		const targetMsg=await formatMessage(insertedRow,targetUserId);
+	
+		setCachedMessage(msgData);
+		cache.lastMessages.set(chatKey,insertedRow);
+	
+		if(cache.histories.has(chatKey))
+			cache.histories.get(chatKey).push(msgData);
+	
+		socket.emit('directMessage',msgData);
+		io.to(targetUserId).emit('directMessage',targetMsg);
+	
+		socket.emit('lastMessages',{
+			lastMessages:await calculateLastMessages(userId)
+		});
+	
+		io.to(targetUserId).emit('lastMessages',{
+			lastMessages:await calculateLastMessages(targetUserId)
+		});
+	
+		const target=await getCachedUser(targetUserId);
+	
+		if(target?.fcmToken)
+			await sendPushNotification(
+				target.fcmToken,senderName,text||fileName||'📎 Attachment',
+				{type:'message',userId,chatId:chatKey},targetUserId
+			);
+	});
    
    socket.on("postStatus", async (data = {}) => {
       const userId = sidToUserId.get(socket.id);
@@ -1719,50 +1890,69 @@ io.on('connection', (socket) => {
    });
    
    
-   socket.on('togglePinMessage', async (data = {}) => {
-      const userId = sidToUserId.get(socket.id);
-      if (!userId) return;
-      
-      const chatKey = getChatKey(userId, data.targetUserId);
-      const msg = await getCachedMessage(data.msgId);
-      
-      if (!msg) return;
-      
-      const pinned = await getCachedPinned(chatKey);
-      
-      if (pinned?.message_id === msg.id) {
-         await dbRun(
+   socket.on('togglePinMessage', async(data={})=>{
+
+    const userId=sidToUserId.get(socket.id);
+
+    if(!userId||!data.targetUserId||!data.msgId){
+        return;
+    }
+
+    const chatKey=getChatKey(userId,data.targetUserId);
+
+    const msg=await getCachedMessage(data.msgId);
+
+    if(!msg){
+        return;
+    }
+
+    const pinned=await getCachedPinned(chatKey);
+
+    if(pinned?.message_id===msg.id){
+
+        await dbRun(
             'DELETE FROM pinned_messages WHERE chat_key=?',
             [chatKey]
-         );
-      } else {
-         if (pinned) {
-            await dbRun(
-               'DELETE FROM pinned_messages WHERE chat_key=?',
-                [chatKey]
-            );
-         }
-         
-         await dbRun(
-            'INSERT INTO pinned_messages (chat_key,message_id) VALUES (?,?)',
-            [chatKey, msg.id]
-         );
-      }
-      
-      invalidatePinnedCache(chatKey);
-      
-      const updatedPinned = await getCachedPinned(chatKey);
-      
-      const payload = {
-         chatKey,
-         pinned: updatedPinned
-      };
-      
-      socket.emit('pinnedUpdate', payload);
-      io.to(data.targetUserId)
-         .emit('pinnedUpdate', payload);
-   });
-   
+        );
+
+        cache.pinned.set(chatKey,null);
+
+    }else{
+        const pinnedAt=Date.now();
+     
+		await dbRun(
+			`INSERT OR REPLACE INTO pinned_messages
+			(chat_key,message_id,pinned_at,pinned_by)
+			VALUES(?,?,?,?)`,
+			[chatKey,msg.id,Date.now(),userId]
+		);
+
+        cache.pinned.set(chatKey,{
+			id:pinned?.id||null,
+			chat_key:chatKey,
+			message_id:msg.id,
+			pinned_at:pinnedAt,
+			pinned_by:userId
+		});
+        
+    }
+
+    const payload={
+        chatKey,
+        pinned:cache.pinned.get(chatKey)
+    };
+
+    socket.emit('pinnedUpdate',payload);
+    io.to(data.targetUserId).emit('pinnedUpdate',payload);
+
+    socket.emit('lastMessages',{
+		lastMessages:await calculateLastMessages(userId)
+	});
+	
+	io.to(data.targetUserId).emit('lastMessages',{
+		lastMessages:await calculateLastMessages(data.targetUserId)
+	});
+});
    socket.on('markRead', async (data = {}) => {
       const userId = sidToUserId.get(socket.id);
       const targetUserId = data.targetUserId;
@@ -1825,50 +2015,35 @@ io.on('connection', (socket) => {
             targetUserId: userId
          });
    });
+
+   socket.on('toggleReaction',async(data={})=>{
+    const userId=sidToUserId.get(socket.id);
+    if(!userId)return;
+
+    const msg=await getCachedMessage(data.msgId),emoji=data.emoji;
+    if(!msg||!emoji)return;
+
+    const reactions=msg.reactions||{};
+    if(!reactions[emoji])reactions[emoji]=[];
+
+    const user=await getCachedUser(userId);
+    const i=reactions[emoji].findIndex(r=>r.userId===userId);
+
+    if(i>=0)reactions[emoji].splice(i,1);
+    else reactions[emoji].push({userId,name:user?.name||'Anonymous'});
+
+    if(!reactions[emoji].length)delete reactions[emoji];
+
+    await dbRun('UPDATE messages SET reactions=? WHERE id=?',[JSON.stringify(reactions),msg.id]);
+
+    const msgData={...msg,reactions};
+    setCachedMessage(msgData);
+
+    const payload={chatKey:msg.chat_key,msg:msgData};
+    socket.emit('messageUpdated',payload);
+    io.to(msg.target_user_id).emit('messageUpdated',payload);
+});
    
-   socket.on('toggleReaction', async (data = {}) => {
-      const userId = sidToUserId.get(socket.id);
-      if (!userId) return;
-      
-      const msg = await getCachedMessage(data.msgId);
-      if (!msg) return;
-      
-      const emoji = data.emoji;
-      if (!emoji) return;
-      
-      let reactions = msg.reactions || {};
-      
-      if (!reactions[emoji]) reactions[emoji] = [];
-      
-      const user = await getCachedUser(userId);
-      const idx = reactions[emoji].findIndex((r) => r.userId === userId);
-      
-      if (idx >= 0) {
-         reactions[emoji].splice(idx, 1);
-         if (reactions[emoji].length === 0) {
-            delete reactions[emoji];
-         }
-      } else {
-         reactions[emoji].push({
-            userId,
-            name: user ? user.name : 'Anonymous'
-         });
-      }
-      
-      await dbRun('UPDATE messages SET reactions = ? WHERE id = ?', [JSON.stringify(reactions), msg.id]);
-      const updated = await dbGet('SELECT * FROM messages WHERE id = ?', [msg.id]);
-      const msgData = formatMessage(updated);
-      setCachedMessage(msgData);
-      
-      const payload = {
-         chatKey: msg.chat_key,
-         msg: msgData
-      };
-      
-      socket.emit('messageUpdated', payload);
-      io.to(msg.target_user_id)
-         .emit('messageUpdated', payload);
-   });
    
    socket.on('deleteMessage', async (data = {}) => {
       const userId = sidToUserId.get(socket.id);
@@ -1939,57 +2114,51 @@ io.on('connection', (socket) => {
          .emit('lastMessagesUpdated');
    });
    
-   socket.on('forwardMessage', async (data = {}) => {
-      const userId = sidToUserId.get(socket.id);
-      const targetUserId = data.targetUserId;
-      const message = data.message || {};
-      
-      if (!userId || !targetUserId) return;
-      
-      const sender = await getCachedUser(userId);
-      const chatKey = getChatKey(userId, targetUserId);
-      const nowMs = Date.now();
-      const replyTo = message.replyTo ? JSON.stringify(message.replyTo) : null;
-      
-      const result = await dbRun(
-         `INSERT INTO messages 
-      (chat_key, user_id, target_user_id, name, text, image, reply_to, time, read_by, reactions, edited, forwarded)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 1)`,
-      [chatKey, userId, targetUserId, sender ? sender.name : 'Anonymous', message.text || null, message.image || null, replyTo, nowMs, '[]', '{}']
-      );
-      
-      const insertedMsg = await dbGet('SELECT * FROM messages WHERE id = ?', [result.lastID]);
-      const msgDict = formatMessage(insertedMsg);
-      setCachedMessage(msgDict);
-      cache.lastMessages.set(chatKey, insertedMsg);
-      
-      socket.emit('directMessage', msgDict);
-      io.to(targetUserId)
-         .emit('directMessage', msgDict);
-      
-      log('[FCM DEBUG] Forward message push notification check...', {
-         senderUserId: userId,
-         targetUserId
-      });
-      const target = await getCachedUser(targetUserId);
-      
-      if (target && target.fcmToken) {
-         await sendPushNotification(
+   socket.on('forwardMessage',async(data={})=>{
+    const userId=sidToUserId.get(socket.id);
+    const targetUserId=data.targetUserId;
+    const message=data.message||{};
+    if(!userId||!targetUserId)return;
+
+    const sender=await getCachedUser(userId);
+    const chatKey=getChatKey(userId,targetUserId);
+    const nowMs=Date.now();
+    const replyTo=message.replyTo?JSON.stringify(message.replyTo):null;
+
+    const result=await dbRun(
+        `INSERT INTO messages
+        (chat_key,user_id,target_user_id,name,text,image,reply_to,time,read_by,reactions,edited,forwarded)
+        VALUES(?,?,?,?,?,?,?,?,?,?,0,1)`,
+        [chatKey,userId,targetUserId,sender?.name||'Anonymous',
+         message.text||null,message.image||null,replyTo,nowMs,'[]','{}']
+    );
+
+    const insertedMsg=await dbGet(
+        'SELECT * FROM messages WHERE id=?',
+        [result.lastID]
+    );
+
+    const msgDict=await formatMessage(insertedMsg,userId);
+    setCachedMessage(msgDict);
+    cache.lastMessages.set(chatKey,insertedMsg);
+
+    socket.emit('directMessage',msgDict);
+
+    const targetMsg=await formatMessage(insertedMsg,targetUserId);
+    io.to(targetUserId).emit('directMessage',targetMsg);
+
+    const target=await getCachedUser(targetUserId);
+
+    if(target?.fcmToken){
+        await sendPushNotification(
             target.fcmToken,
-            sender ? sender.name : 'Anonymous',
-            msgDict.text || '[Forwarded Attachment]', {
-               type: 'message',
-               userId,
-               chatId: chatKey
-            },
+            sender?.name||'Anonymous',
+            msgDict.text||'[Forwarded Attachment]',
+            {type:'message',userId,chatId:chatKey},
             targetUserId
-         );
-      } else {
-         log('[FCM WARN] Target user has no FCM token for forwarded message.', {
-            targetUserId
-         });
-      }
-   });
+        );
+    }
+});
    
    socket.on("callUser", async (data = {}) => {
       const callerId = sidToUserId.get(socket.id),
@@ -2651,28 +2820,73 @@ io.on('connection', (socket) => {
    socket.on("disconnect", () => {
       adminSockets.delete(socket.id);
    });
+   // Groups
+
+   socket.on('createGroup',async(data={})=>{
+      const userId=sidToUserId.get(socket.id);
+      if(!userId||!data.name?.trim())return;
+  
+      const name=data.name.trim();
+      const description=(data.description||'').trim();
+      const type=data.type==='public'?'public':'private';
+      const now=Date.now();
+  
+      const result=await dbRun(`
+          INSERT INTO groups
+          (name,description,image,type,owner_id,created_at)
+          VALUES(?,?,?,?,?,?)
+      `,[name,description,data.image||null,type,userId,now]);
+  
+      const group={
+          id:result.lastID,
+          name,
+          description,
+          image:data.image||null,
+          type,
+          owner_id:userId,
+          created_at:now
+      };
+  
+      await dbRun(`
+         INSERT INTO group_members
+         (group_id,user_id,role,joined_at)
+         VALUES(?,?,?,?)
+     `,[group.id,userId,'owner',now]);
+  
+      cache.groups.set(group.id,group);
+      cache.groupMembers.set(group.id,new Map([
+          [userId,{user_id:userId,role:'owner'}]
+      ]));
+  
+      socket.join(`group:${group.id}`);
+      socket.emit('groupCreated',group);
+  });
+  
 });
 
-async function loadStatusCache() {
-   const now = Date.now();
-   
-   const rows = await dbAll(`
-        SELECT
-            s.*,
-            COALESCE(c.name,u.name) AS name
+async function loadStatusCache(userId){
+    const now=Date.now();
+
+    const rows=await dbAll(`
+        SELECT s.*,COALESCE(c.name,u.name) AS name
         FROM statuses s
         JOIN users u ON u.id=s.user_id
         LEFT JOIN contacts c
             ON c.contact_user_id=s.user_id
+            AND c.user_id=?
         WHERE s.expires_at>?
+        AND (
+            s.user_id=?
+            OR c.contact_user_id IS NOT NULL
+            OR s.user_id='admin'
+        )
         ORDER BY s.created_at DESC
-    `, [now]);
-   
-   cache.statuses.clear();
-   
-   for (const status of rows) {
-      cache.statuses.set(status.id, status);
-   }
+    `,[userId,now,userId]);
+
+    cache.statuses.clear();
+
+    for(const status of rows)
+        cache.statuses.set(status.id,status);
 }
 
 const statusStorage = multer.diskStorage({
@@ -2754,7 +2968,6 @@ server.listen(PORT, '0.0.0.0', async () => {
    await loadLastMessagesCache();
    await loadLastMessagesCache();
    await loadUserCache();
-   await loadStatusCache()
    log(`[SERVER] Node server successfully started and listening on 0.0.0.0:${PORT}`);
    
 });

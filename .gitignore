@@ -9,3 +9,4 @@
 /public/statuses
 /public/dps
 /*.env
+/public/uploads

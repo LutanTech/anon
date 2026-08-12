@@ -179,3 +179,17 @@ function showInputPrompt(title,message,value="",placeholder=""){
         });
     });
 }
+
+async function base64ToFile(base64, name, type) {
+    const response = await fetch(base64);
+    const blob = await response.blob();
+
+    return new File(
+        [blob],
+        name,
+        {
+            type: type || blob.type
+        }
+    );
+}
+window.base64ToFile = base64ToFile
