@@ -195,111 +195,401 @@ async function base64ToFile(base64, name, type) {
 window.base64ToFile = base64ToFile
 
 
-function openMediaPlayer(type, src, name)
-{
-    const overlay =
-        document.getElementById('media-player-overlay');
+function openMediaPlayer(type, src, name){
+    const overlay = document.getElementById('media-player-overlay');
+    const content = document.getElementById('media-player-content');
+    const title = document.getElementById('media-player-title');
 
-    const content =
-        document.getElementById('media-player-content');
+    if (!overlay || !content) return;
 
-    const title =
-        document.getElementById('media-player-title');
+    title.textContent = name || 'Media';
 
-    title.textContent = name;
+    const safeSrc = escapeHTML(src);
+    const safeName = escapeHTML(name || 'file');
 
-    if (type === 'video') {
+    content.innerHTML = '';
 
+    if (type === 'video')
+    {
         content.innerHTML = `
-            <div class="w-full max-w-5xl mx-auto">
+            <div id="anon-video-player"
+                 class="w-full max-w-5xl mx-auto">
 
-                <video
-                    id="media-player"
-                    src="${escapeHTML(src)}"
-                    controls
-                    autoplay
-                    playsinline
-                    class="w-full max-h-[75vh]
-                           rounded-xl bg-black">
-                </video>
+                <div class="relative overflow-hidden rounded-2xl
+                            bg-black border border-slate-800">
 
-                <div class="flex items-center
-                            justify-center gap-3 mt-4">
+                    <video
+                        id="anon-media"
+                        src="${safeSrc}"
+                        autoplay
+                        playsinline
+                        preload="metadata"
+                        class="w-full max-h-[70vh] object-contain">
+                    </video>
+
+                    <div class="absolute inset-x-0 bottom-0
+                                bg-gradient-to-t from-black/95
+                                via-black/70 to-transparent
+                                pt-12 px-4 pb-3">
+
+                        <input
+                            id="anon-progress"
+                            type="range"
+                            min="0"
+                            max="100"
+                            value="0"
+                            class="w-full accent-brand-500 cursor-pointer">
+
+                        <div class="flex items-center gap-3 mt-2">
+
+                            <button
+                                id="anon-play"
+                                class="w-9 h-9 rounded-full
+                                       flex items-center justify-center
+                                       bg-brand-600 hover:bg-brand-500
+                                       text-white">
+                                <i class="fas fa-pause"></i>
+                            </button>
+
+                            <span
+                                id="anon-time"
+                                class="text-[11px] text-slate-300
+                                       whitespace-nowrap">
+                                0:00 / 0:00
+                            </span>
+
+                            <button
+                                id="anon-mute"
+                                class="w-8 h-8 text-slate-300
+                                       hover:text-white">
+                                <i class="fas fa-volume-up"></i>
+                            </button>
+
+                            <input
+                                id="anon-volume"
+                                type="range"
+                                min="0"
+                                max="1"
+                                step="0.01"
+                                value="1"
+                                class="w-20 accent-brand-500">
+
+                            <select
+                                id="anon-speed"
+                                class="ml-auto bg-slate-900/90
+                                       border border-slate-700
+                                       rounded-lg px-2 py-1
+                                       text-[10px] text-white">
+
+                                <option value="0.5">0.5x</option>
+                                <option value="0.75">0.75x</option>
+                                <option value="1" selected>1x</option>
+                                <option value="1.25">1.25x</option>
+                                <option value="1.5">1.5x</option>
+                                <option value="2">2x</option>
+
+                            </select>
+
+                            <button
+                                onclick="toggleMediaFullscreen()"
+                                class="w-8 h-8 text-slate-300
+                                       hover:text-white">
+
+                                <i class="fas fa-expand"></i>
+
+                            </button>
+
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between mt-4">
+
+                    <div class="min-w-0">
+                        <div class="text-xs text-slate-200 truncate">
+                            ${safeName}
+                        </div>
+
+                        <div class="text-[10px] text-slate-500">
+                            Video
+                        </div>
+                    </div>
 
                     <button
-                        onclick="downloadFile(
-                            '${escapeHTML(src)}',
-                            '${escapeHTML(name)}'
-                        )"
+                        onclick="downloadFile('${safeSrc}', '${safeName}')"
                         class="px-4 py-2 rounded-xl
                                bg-brand-600 hover:bg-brand-500
-                               text-white text-xs">
+                               text-white text-xs shrink-0">
 
-                        <i class="fa-solid fa-download mr-1"></i>
+                        <i class="fas fa-download mr-1"></i>
                         Download
 
                     </button>
 
                 </div>
-
             </div>
         `;
-
-    } else if (type === 'audio') {
-
+    }
+    else if (type === 'audio')
+    {
         content.innerHTML = `
-            <div class="w-full max-w-xl mx-auto
-                        p-6 rounded-2xl bg-slate-900
-                        border border-slate-700">
+            <div id="anon-audio-player"
+                 class="w-full max-w-xl mx-auto
+                        rounded-2xl bg-slate-900
+                        border border-slate-700 p-6">
+
+                <audio
+                    id="anon-media"
+                    src="${safeSrc}"
+                    autoplay
+                    preload="metadata">
+                </audio>
 
                 <div class="flex flex-col items-center">
 
-                    <div class="w-20 h-20 rounded-full
+                    <div class="w-24 h-24 rounded-2xl
                                 bg-brand-600/20
-                                flex items-center justify-center mb-4">
+                                border border-brand-500/20
+                                flex items-center justify-center">
 
-                        <i class="fa-solid fa-music
-                                  text-brand-400 text-3xl"></i>
-
-                    </div>
-
-                    <div class="text-sm text-white
-                                truncate max-w-full mb-5">
-
-                        ${escapeHTML(name)}
+                        <i class="fas fa-music
+                                  text-brand-400 text-4xl"></i>
 
                     </div>
 
-                    <audio
-                        id="media-player"
-                        src="${escapeHTML(src)}"
-                        controls
-                        autoplay
-                        class="w-full">
-                    </audio>
+                    <div class="w-full text-center mt-4">
+
+                        <div class="text-sm font-semibold
+                                    text-white truncate">
+
+                            ${safeName}
+
+                        </div>
+
+                        <div class="text-[10px] text-slate-500 mt-1">
+                            Audio
+                        </div>
+
+                    </div>
+
+                    <input
+                        id="anon-progress"
+                        type="range"
+                        min="0"
+                        max="100"
+                        value="0"
+                        class="w-full mt-6 accent-brand-500 cursor-pointer">
+
+                    <div class="w-full flex justify-between
+                                text-[10px] text-slate-500 mt-1">
+
+                        <span id="anon-current-time">0:00</span>
+                        <span id="anon-duration">0:00</span>
+
+                    </div>
+
+                    <div class="flex items-center
+                                justify-center gap-5 mt-5">
+
+                        <button
+                            id="anon-play"
+                            class="w-12 h-12 rounded-full
+                                   bg-brand-600 hover:bg-brand-500
+                                   flex items-center justify-center
+                                   text-white">
+
+                            <i class="fas fa-pause"></i>
+
+                        </button>
+
+                    </div>
+
+                    <div class="w-full flex items-center gap-3 mt-5">
+
+                        <button
+                            id="anon-mute"
+                            class="text-slate-400
+                                   hover:text-white">
+
+                            <i class="fas fa-volume-up"></i>
+
+                        </button>
+
+                        <input
+                            id="anon-volume"
+                            type="range"
+                            min="0"
+                            max="1"
+                            step="0.01"
+                            value="1"
+                            class="flex-1 accent-brand-500">
+
+                        <select
+                            id="anon-speed"
+                            class="bg-slate-800
+                                   border border-slate-700
+                                   rounded-lg px-2 py-1
+                                   text-[10px] text-white">
+
+                            <option value="0.5">0.5x</option>
+                            <option value="0.75">0.75x</option>
+                            <option value="1" selected>1x</option>
+                            <option value="1.25">1.25x</option>
+                            <option value="1.5">1.5x</option>
+                            <option value="2">2x</option>
+
+                        </select>
+
+                    </div>
 
                     <button
-                        onclick="downloadFile(
-                            '${escapeHTML(src)}',
-                            '${escapeHTML(name)}'
-                        )"
-                        class="mt-5 px-4 py-2 rounded-xl
-                               bg-brand-600 hover:bg-brand-500
+                        onclick="downloadFile('${safeSrc}', '${safeName}')"
+                        class="w-full mt-6 px-4 py-2.5
+                               rounded-xl bg-brand-600
+                               hover:bg-brand-500
                                text-white text-xs">
 
-                        <i class="fa-solid fa-download mr-1"></i>
+                        <i class="fas fa-download mr-1"></i>
                         Download
 
                     </button>
 
                 </div>
-
             </div>
         `;
-
     }
 
     overlay.classList.remove('hidden');
+
+    const media = document.getElementById('anon-media');
+    if (!media) return;
+
+    const progress = document.getElementById('anon-progress');
+    const playBtn = document.getElementById('anon-play');
+    const volume = document.getElementById('anon-volume');
+    const muteBtn = document.getElementById('anon-mute');
+    const speed = document.getElementById('anon-speed');
+
+    function formatTime(seconds)
+    {
+        if (!Number.isFinite(seconds)) return '0:00';
+
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60)
+            .toString()
+            .padStart(2, '0');
+
+        return `${mins}:${secs}`;
+    }
+
+    function updatePlayIcon()
+    {
+        if (!playBtn) return;
+
+        playBtn.innerHTML = media.paused
+            ? '<i class="fas fa-play"></i>'
+            : '<i class="fas fa-pause"></i>';
+    }
+
+    function updateTime()
+    {
+        if (!media.duration) return;
+
+        const percent =
+            (media.currentTime / media.duration) * 100;
+
+        if (progress)
+            progress.value = percent;
+
+        if (type === 'video')
+        {
+            const time = document.getElementById('anon-time');
+
+            if (time)
+            {
+                time.textContent =
+                    `${formatTime(media.currentTime)} / ${formatTime(media.duration)}`;
+            }
+        }
+        else
+        {
+            const current =
+                document.getElementById('anon-current-time');
+
+            const duration =
+                document.getElementById('anon-duration');
+
+            if (current)
+                current.textContent =
+                    formatTime(media.currentTime);
+
+            if (duration)
+                duration.textContent =
+                    formatTime(media.duration);
+        }
+    }
+
+    playBtn?.addEventListener('click', () =>
+    {
+        if (media.paused)
+            media.play();
+        else
+            media.pause();
+
+        updatePlayIcon();
+    });
+
+    media.addEventListener('play', updatePlayIcon);
+    media.addEventListener('pause', updatePlayIcon);
+    media.addEventListener('timeupdate', updateTime);
+    media.addEventListener('loadedmetadata', updateTime);
+
+    progress?.addEventListener('input', () =>
+    {
+        if (!media.duration) return;
+
+        media.currentTime =
+            (Number(progress.value) / 100) *
+            media.duration;
+    });
+
+    volume?.addEventListener('input', () =>
+    {
+        media.volume = Number(volume.value);
+
+        if (media.volume > 0)
+            media.muted = false;
+
+        updateVolumeIcon();
+    });
+
+    muteBtn?.addEventListener('click', () =>
+    {
+        media.muted = !media.muted;
+        updateVolumeIcon();
+    });
+
+    function updateVolumeIcon()
+    {
+        if (!muteBtn) return;
+
+        muteBtn.innerHTML =
+            media.muted || media.volume === 0
+                ? '<i class="fas fa-volume-mute"></i>'
+                : media.volume < 0.5
+                    ? '<i class="fas fa-volume-down"></i>'
+                    : '<i class="fas fa-volume-up"></i>';
+    }
+
+    speed?.addEventListener('change', () =>
+    {
+        media.playbackRate = Number(speed.value);
+    });
+
+    media.addEventListener('ended', updatePlayIcon);
+
+    updatePlayIcon();
+    updateVolumeIcon();
 }
 
 function closeMediaPlayer()
@@ -324,6 +614,31 @@ function closeMediaPlayer()
     overlay.classList.add('hidden');
 }
 
+function toggleMediaFullscreen()
+{
+    const player =
+        document.getElementById('anon-video-player');
+
+    const video =
+        document.getElementById('anon-media');
+
+    if (!player || !video) return;
+
+    if (document.fullscreenElement)
+    {
+        document.exitFullscreen();
+        return;
+    }
+
+    if (player.requestFullscreen)
+    {
+        player.requestFullscreen();
+    }
+    else if (video.webkitEnterFullscreen)
+    {
+        video.webkitEnterFullscreen();
+    }
+}
 
 document.addEventListener('seeked', e => {
 

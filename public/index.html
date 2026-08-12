@@ -1718,7 +1718,7 @@ function escapeHTML(str)
       url =>
       {
          const href = url.startsWith("http") ? url : `https://${url}`;
-         return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="text-green-400 underline break-all">${url}</a>`;
+         return `<a  href='${url}' rel="noopener noreferrer" class="text-green-400 cursor-pointer underline break-all">${url}</a>`;
       }
    );
 }
@@ -3571,7 +3571,7 @@ function addMessageUI(msg, scroll = false)
    }
 }
 
-function downloadFile(link, name) {
+function downloadFile(link, name, open) {
    if (!link) return;
 
    const payload = btoa(JSON.stringify({
@@ -3584,7 +3584,7 @@ function downloadFile(link, name) {
    } else {
        const a = document.createElement('a');
        a.href = link;
-       a.download = name || 'file';
+       open ? '' : a.download = name || 'file';
        a.target = '_blank';
        document.body.appendChild(a);
        a.click();
