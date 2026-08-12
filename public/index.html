@@ -1327,6 +1327,29 @@ body {
    <div id="lightbox-modal" class="hidden fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in" onclick="closeLightbox()">
       <img id="lightbox-img" class="max-w-full max-h-full rounded border border-slate-800 shadow-2xl object-contain" src="" alt="Enlarged preview">
    </div>
+
+   <div id="media-player-overlay"
+     class="fixed inset-0 z-[9999] hidden bg-black/95">
+
+    <button
+        onclick="closeMediaPlayer()"
+        class="absolute top-5 right-5 z-20 w-10 h-10
+               rounded-full bg-slate-800 text-white">
+        <i class="fa-solid fa-xmark"></i>
+    </button>
+
+    <div class="w-full h-full flex flex-col items-center justify-center p-5">
+
+        <div id="media-player-title"
+             class="text-sm text-slate-300 mb-4 truncate max-w-full">
+        </div>
+
+        <div id="media-player-content"
+             class="w-full max-w-4xl">
+        </div>
+
+    </div>
+</div>
    
    <!-- Socket.IO Client CDN -->
    <script src="/scripts/utils.js"></script>
@@ -3258,38 +3281,122 @@ function addMessageUI(msg, scroll = false)
                         </div>
                     </div>`;
       } else if (msg.file_type?.startsWith('video/')) {
-         attachmentHTML = `
-                    <div class="mb-2">
-                        <video controls class="max-w-full max-h-60 rounded-xl border border-slate-700/50">
-                            <source src="${msg.file}"  type="${msg.file_type}">
-                        </video>
-        
-                        <div class="flex items-center justify-between mt-2 text-xs text-slate-300">
-                            <span class="truncate text-xs">${escapeHTML(msg.file_name).length > 15 ? escapeHTML(msg.file_name).slice(0, 15) + '...' : escapeHTML(msg.file_name)} • ${size}</span>
-        
-                            <a  onclick="downloadFile('${msg.file}', '${msg.file_name}')"  target="_blank" rel="noopener noreferrer"  download="${msg.file_name}"
-                                class="px-2 py-1 rounded bg-brand-600 hover:bg-brand-700">
-                                <i class="fa-solid fa-download"></i>
-                            </a>
-                        </div>
-                    </div>`;
-      } else if (msg.file_type?.startsWith('audio/')) {
-         attachmentHTML = `
-                    <div class="mb-2">
-                        <audio controls class="w-full">
-                            <source src="${msg.file}" type="${msg.file_type}">
-                        </audio>
-        
-                        <div class="flex items-center justify-between mt-2 text-xs text-slate-300">
-                            <span class="truncate text-xs">${escapeHTML(msg.file_name).length > 15 ? escapeHTML(msg.file_name).slice(0, 15) + '...' : escapeHTML(msg.file_name)} • ${size}</span>
 
-                            <a  onclick="downloadFile('${msg.file}', '${msg.file_name}')"  target="_blank" rel="noopener noreferrer"  download="${msg.file_name}"
-                                class="px-2 py-1 rounded bg-brand-600 hover:bg-brand-700">
-                                <i class="fa-solid fa-download"></i>
-                            </a>
-                        </div>
-                    </div>`;
-      } else {
+         const videoId = `video_${msg.id}`;
+     
+         attachmentHTML = `
+             <div
+                 onclick="openMediaPlayer(
+                     'video',
+                     '${escapeHTML(msg.file)}',
+                     '${escapeHTML(msg.file_name)}'
+                 )"
+                 class="mb-2 rounded-xl overflow-hidden bg-slate-900
+                        border border-slate-700 cursor-pointer
+                        hover:border-brand-500/50 transition">
+     
+                 <div class="relative w-full h-44 bg-black">
+     
+                     <video
+                         id="${videoId}"
+                         src="${escapeHTML(msg.file)}"
+                         preload="metadata"
+                         muted
+                         playsinline
+                         class="video-thumbnail w-full h-full object-cover">
+                     </video>
+     
+                     <div class="absolute inset-0 flex items-center justify-center
+                                 bg-black/20">
+     
+                         <div class="w-12 h-12 rounded-full
+                                     bg-black/70 backdrop-blur-sm
+                                     flex items-center justify-center
+                                     border border-white/20">
+     
+                             <i class="fa-solid fa-play text-white text-sm"></i>
+     
+                         </div>
+     
+                     </div>
+     
+                 </div>
+     
+                 <div class="flex items-center gap-3 p-3">
+     
+                     <div class="flex-1 min-w-0">
+     
+                         <div class="truncate text-xs text-slate-200">
+                             ${escapeHTML(msg.file_name)}
+                         </div>
+     
+                         <div class="text-[10px] text-slate-500 mt-1">
+                             Video • ${size} •
+                             <span id="${videoId}_duration">Loading...</span>
+                         </div>
+     
+                     </div>
+     
+                     <i class="fa-solid fa-chevron-right
+                               text-[10px] text-slate-600"></i>
+     
+                 </div>
+     
+             </div>
+         `;
+     } else if (msg.file_type?.startsWith('audio/')) {
+
+      const audioId = `audio_${msg.id}`;
+
+      attachmentHTML = `
+          <div
+              onclick="openMediaPlayer(
+                  'audio',
+                  '${escapeHTML(msg.file)}',
+                  '${escapeHTML(msg.file_name)}'
+              )"
+              class="flex items-center gap-3 p-3 mb-2
+                     rounded-xl bg-slate-900 border border-slate-700
+                     cursor-pointer hover:border-brand-500/50 transition ">
+  
+              <div class="w-12 h-12 rounded-full
+                          bg-brand-600/20 flex items-center
+                          justify-center shrink-0">
+  
+                  <i class="fa-solid fa-music text-brand-400"></i>
+  
+              </div>
+  
+              <div class="flex-1 min-w-0">
+  
+                  <div class="truncate text-xs text-slate-200">
+                      ${escapeHTML(msg.file_name)}
+                  </div>
+  
+                  <div class="text-[10px] text-slate-500 mt-1">
+                      Audio • ${size} •
+                      <span id="${audioId}_duration">
+                          Loading...
+                      </span>
+                  </div>
+  
+              </div>
+  
+              <i class="fa-solid fa-chevron-right
+                        text-[10px] text-slate-600"></i>
+  
+              <audio
+                  id="${audioId}"
+                  src="${escapeHTML(msg.file)}"
+                  preload="metadata"
+                  class="audio-thumbnail hidden">
+              </audio>
+  
+          </div>
+      `;
+
+      
+  } else {
          attachmentHTML = `
                     <div class="flex items-center justify-between p-3 mb-2 rounded-xl bg-slate-900 border border-slate-700">
                         <div class="flex items-center gap-3 overflow-hidden">
@@ -3472,7 +3579,17 @@ function downloadFile(link, name) {
        name: name || 'file'
    }));
 
-   window.location.href = `anon-download://${payload}`;
+   if (window.AndroidApp) {
+       window.location.href = `anon-download://${payload}`;
+   } else {
+       const a = document.createElement('a');
+       a.href = link;
+       a.download = name || 'file';
+       a.target = '_blank';
+       document.body.appendChild(a);
+       a.click();
+       a.remove();
+   }
 }
 
 function triggerReply(targetMsg)
@@ -3716,6 +3833,7 @@ function contextActionCopy()
    if (msg && msg.text)
    {
       document.execCommand('copy');
+      navigator.clipboard.writeText (msg.text)
       showToast("Copied to clipboard");
    }
 }
@@ -6898,6 +7016,7 @@ window.deleteCallLog = function(callId) {
       callId
    });
 };
+
 
 
 // GROUPS =====================

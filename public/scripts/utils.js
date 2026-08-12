@@ -193,3 +193,180 @@ async function base64ToFile(base64, name, type) {
     );
 }
 window.base64ToFile = base64ToFile
+
+
+function openMediaPlayer(type, src, name)
+{
+    const overlay =
+        document.getElementById('media-player-overlay');
+
+    const content =
+        document.getElementById('media-player-content');
+
+    const title =
+        document.getElementById('media-player-title');
+
+    title.textContent = name;
+
+    if (type === 'video') {
+
+        content.innerHTML = `
+            <div class="w-full max-w-5xl mx-auto">
+
+                <video
+                    id="media-player"
+                    src="${escapeHTML(src)}"
+                    controls
+                    autoplay
+                    playsinline
+                    class="w-full max-h-[75vh]
+                           rounded-xl bg-black">
+                </video>
+
+                <div class="flex items-center
+                            justify-center gap-3 mt-4">
+
+                    <button
+                        onclick="downloadFile(
+                            '${escapeHTML(src)}',
+                            '${escapeHTML(name)}'
+                        )"
+                        class="px-4 py-2 rounded-xl
+                               bg-brand-600 hover:bg-brand-500
+                               text-white text-xs">
+
+                        <i class="fa-solid fa-download mr-1"></i>
+                        Download
+
+                    </button>
+
+                </div>
+
+            </div>
+        `;
+
+    } else if (type === 'audio') {
+
+        content.innerHTML = `
+            <div class="w-full max-w-xl mx-auto
+                        p-6 rounded-2xl bg-slate-900
+                        border border-slate-700">
+
+                <div class="flex flex-col items-center">
+
+                    <div class="w-20 h-20 rounded-full
+                                bg-brand-600/20
+                                flex items-center justify-center mb-4">
+
+                        <i class="fa-solid fa-music
+                                  text-brand-400 text-3xl"></i>
+
+                    </div>
+
+                    <div class="text-sm text-white
+                                truncate max-w-full mb-5">
+
+                        ${escapeHTML(name)}
+
+                    </div>
+
+                    <audio
+                        id="media-player"
+                        src="${escapeHTML(src)}"
+                        controls
+                        autoplay
+                        class="w-full">
+                    </audio>
+
+                    <button
+                        onclick="downloadFile(
+                            '${escapeHTML(src)}',
+                            '${escapeHTML(name)}'
+                        )"
+                        class="mt-5 px-4 py-2 rounded-xl
+                               bg-brand-600 hover:bg-brand-500
+                               text-white text-xs">
+
+                        <i class="fa-solid fa-download mr-1"></i>
+                        Download
+
+                    </button>
+
+                </div>
+
+            </div>
+        `;
+
+    }
+
+    overlay.classList.remove('hidden');
+}
+
+function closeMediaPlayer()
+{
+    const overlay =
+        document.getElementById('media-player-overlay');
+
+    const content =
+        document.getElementById('media-player-content');
+
+    const media =
+        content.querySelector('video, audio');
+
+    if (media) {
+        media.pause();
+        media.removeAttribute('src');
+        media.load();
+    }
+
+    content.innerHTML = '';
+
+    overlay.classList.add('hidden');
+}
+
+
+document.addEventListener('seeked', e => {
+
+    if (!e.target.classList.contains('video-thumbnail'))
+        return;
+
+    e.target.pause();
+
+}, true);
+
+document.addEventListener('loadedmetadata', e => {
+
+    if (!e.target.classList.contains('video-thumbnail') &&
+        !e.target.classList.contains('audio-thumbnail')) {
+        return;
+    }
+
+    const media = e.target;
+
+    const durationElement =
+        document.getElementById(`${media.id}_duration`);
+
+    if (durationElement) {
+        durationElement.textContent =
+            formatVideoDuration(media.duration);
+    }
+
+}, true);
+
+function formatVideoDuration(seconds)
+{
+    if (!Number.isFinite(seconds))
+        return '0:00';
+
+    seconds = Math.floor(seconds);
+
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+
+    if (hours > 0) {
+        return `${hours}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
+
+    return `${minutes}:${String(secs).padStart(2, '0')}`;
+}
